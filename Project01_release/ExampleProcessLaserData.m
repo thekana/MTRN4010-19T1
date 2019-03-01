@@ -25,15 +25,15 @@ N = dataL.N;                         % number of scans in this squence.
 disp('Brute force plotting');
 disp('There is no GUI. Use "Control-C" to break the loop.');
 
-for i=1:3:N,                        % in this example, I skip some of them..
+for i=1:N                        % in this example, I skip some of them..
     scan_i = dataL.Scans(:,i);
     ProcessScan(scan_i);
     
     s=sprintf('(Brute force plotting...)\nShowing scan #[%d]/[%d]\r',i,N);
     title(s);
     
-    pause(0.01) ;                   % wait for ~10ms
-end;
+    %pause(0.01) ;                   % wait for ~10ms
+end
 disp('Done. Bye.');
 
 return;
@@ -72,7 +72,7 @@ plot(X(ii),Y(ii),'+r');             % plot highly reflective ones
 axis([-10,10,0,20]);                % focuses plot on this region ( of interest in L220)
 
 % To be done (by you)
-OOIs = ExtractOOIs(ranges,intensities) ;
+OOIs = ExtractOOIs(ranges,intensities);
 PlotOOIs(OOIs);
 
 return;
