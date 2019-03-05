@@ -21,7 +21,8 @@ load(DataFileName);
 % (because it was created under that name and saved)  
 
 N = dataL.N;                         % number of scans in this squence.
-figure('visible','on'); clf();
+figure('visible','on');
+clf();
 myHandle.handle1 = plot(0,0,'b.');
 hold on;
 myHandle.handle2 = plot(0,0,'r+');
@@ -36,7 +37,7 @@ for i=1:10:N                        % in this example, I skip some of them..
     scan_i = dataL.Scans(:,i);
     ProcessScan(scan_i,myHandle);
     
-    s=sprintf('(Brute force plotting...)\nShowing scan #[%d]/[%d]\r',i,N);
+    s=sprintf('Showing scan #[%d]/[%d]\r',i,N);
     set(myHandle.handle3,'string',s);
     
     %pause(0.01) ;                   % wait for ~10ms
