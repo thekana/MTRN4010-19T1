@@ -27,20 +27,22 @@ myHandle.handle1 = plot(0,0,'b.');
 hold on;
 myHandle.handle2 = plot(0,0,'r+');
 axis([-10,10,-5,20]);                % focuses plot on this region ( of interest in L220)
-xlabel('x cm');
-ylabel('y cm');
+xlabel('x m');
+ylabel('y m');
 myHandle.handle3 = title('');
-myHandle.handle4 = plot(0,0);
+myHandle.handle4 = plot(0,0);       %reflective OOI
+myHandle.handle5 = plot(0,0);       %non-reflective OOI
 zoom on; grid on;
 
-for i=1:10:N                        % in this example, I skip some of them..
+for i=1:11:N                       % in this example, I skip some of them..
+    %i = 8291;
     scan_i = dataL.Scans(:,i);
     ProcessScan(scan_i,myHandle);
     
     s=sprintf('Showing scan #[%d]/[%d]\r',i,N);
     set(myHandle.handle3,'string',s);
     
-    %pause(0.01) ;                   % wait for ~10ms
+    pause(0.01) ;                   % wait for ~10ms
 end
 disp('Done. Bye.');
 
@@ -89,15 +91,17 @@ end
 function r = ExtractOOIs(dataForOOI)
    
     % your part...
-    threshold = 0.2;
+    threshold = 0.05;
     distance = [0; sqrt(diff(dataForOOI(:,1)).^2+diff(dataForOOI(:,2)).^2)]; %vector of distance
     cluster_number = 1;
     cluster_vector = zeros(length(distance),1);
     for i=1:length(distance)
-        cluster_vector(i)=cluster_number;
-        if (distance(i) > threshold)
+        
+        
+        if (distance(i) >= threshold)
             cluster_number = cluster_number+1;
         end
+        cluster_vector(i)=cluster_number;
     end
     r.N = max(cluster_vector);
     r.Centers = zeros(2,r.N);
@@ -121,7 +125,7 @@ function r = ExtractOOIs(dataForOOI)
         end
     end
     
-    Filter = r.Diameter >= 0;
+    Filter = (r.Diameter >= 0.05 & r.Diameter <=0.20);
     
     r.Centers(:,~Filter)=[];
     r.Diameter(~Filter)=[];
@@ -135,9 +139,12 @@ function PlotOOIs(OOIs,myHandle)
     if OOIs.N<1, return ; end;
     % your part....
     myHandle.handle4.LineStyle = 'none';
-    myHandle.handle4.LineWidth = 1.5;
+    myHandle.handle4.LineWidth = 2;
+    myHandle.handle5.LineStyle = 'none';
+    myHandle.handle5.LineWidth = 1.5;
     set(myHandle.handle4,'xdata',OOIs.Centers(1,OOIs.Color>0),'ydata',OOIs.Centers(2,OOIs.Color>0),'color','g','marker','+','markersize',10);
-    % plot(OOIs.Centers(1,:),OOIs.Centers(2,:),'c*');
+    set(myHandle.handle5,'xdata',OOIs.Centers(1,OOIs.Color==0),'ydata',OOIs.Centers(2,OOIs.Color==0),'color','k','marker','+','markersize',10);
+    %plot(OOIs.Centers(1,:),OOIs.Centers(2,:),'c*');
     %plot(OOIs.Centers(1,OOIs.Color>0),OOIs.Centers(2,OOIs.Color>0),'g*');
 return;
 end
@@ -158,7 +165,7 @@ function   [xc,yc,R] = circfit(x,y)
 %   x^2+y^2+a(1)*x+a(2)*y+a(3)=0
 %
 %  By:  Izhak bucher 25/oct /1991, 
-    x=x(:); y=y(:);
+   x=x(:); y=y(:);
    a=[x y ones(size(x))]\[-(x.^2+y.^2)];
    xc = -.5*a(1);
    yc = -.5*a(2);
