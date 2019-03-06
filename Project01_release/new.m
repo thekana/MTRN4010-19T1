@@ -20,29 +20,29 @@ load(DataFileName);
 % The variable that contains the data structure is named "dataL"
 % (because it was created under that name and saved)  
 
-N = dataL.N;                         % number of scans in this squence.
+N = dataL.N;                        %number of scans in this squence.
 figure('visible','on');
 clf();
-myHandle.handle1 = plot(0,0,'b.');
+myHandle.handle1 = plot(0,0,'b.');  %handle for all points
 hold on;
-myHandle.handle2 = plot(0,0,'r+');
-axis([-10,10,-5,20]);                % focuses plot on this region ( of interest in L220)
-xlabel('x m');
-ylabel('y m');
+myHandle.handle2 = plot(0,0,'r+');  %handle for reflective points
+axis([-10,10,0,20]);                %focuses plot on this region ( of interest in L220)
+xlabel('x (meters)');
+ylabel('y (meters)');
 myHandle.handle3 = title('');
-myHandle.handle4 = plot(0,0);       %reflective OOI
-myHandle.handle5 = plot(0,0);       %non-reflective OOI
+myHandle.handle4 = plot(0,0);       %handle for reflective OOIs
+myHandle.handle5 = plot(0,0);       %handle for non-reflective OOIs
 zoom on; grid on;
 
-for i=1:11:N                       % in this example, I skip some of them..
-    %i = 8291;
+for i=1:N
+    
     scan_i = dataL.Scans(:,i);
     ProcessScan(scan_i,myHandle);
     
     s=sprintf('Showing scan #[%d]/[%d]\r',i,N);
     set(myHandle.handle3,'string',s);
     
-    pause(0.01) ;                   % wait for ~10ms
+    pause(0.01) ;                   % 10hz refresh rate
 end
 disp('Done. Bye.');
 
@@ -74,31 +74,29 @@ angles = [0:360]'*0.5* pi/180 ;         % associated angle, for each individual 
 X = cos(angles).*ranges;
 Y = sin(angles).*ranges;    
 
-% Plot. "BRUTE FORCE" plot (see note 1).
 
-set(myHandle.handle1,'xdata',X,'ydata',Y,'color','b','marker','.')                   % all points
+set(myHandle.handle1,'xdata',X,'ydata',Y,'color','b','marker','.')         % update all points
 ii = find(intensities~=0);          % find those "pixels" that had intense reflection (>0) (aka: Highly Reflective pixels, HR)
-set(myHandle.handle2,'xdata',X(ii),'ydata',Y(ii),'color','r','marker','+');             % plot highly reflective ones
+set(myHandle.handle2,'xdata',X(ii),'ydata',Y(ii),'color','r','marker','+');     % plot highly reflective ones
 
-dataForOOI = [X,Y,single(intensities)];
-% To be done (by you)
-OOIs = ExtractOOIs(dataForOOI);
+data = [X,Y,single(intensities)];   % concat vectors
+
+OOIs = ExtractOOIs(data);
 PlotOOIs(OOIs,myHandle);
 
 return;
 end
 
-function r = ExtractOOIs(dataForOOI)
+function r = ExtractOOIs(data)
    
-    % your part...
-    threshold = 0.05;
-    distance = [0; sqrt(diff(dataForOOI(:,1)).^2+diff(dataForOOI(:,2)).^2)]; %vector of distance
-    cluster_number = 1;
+    threshold = 0.15;
+    distance = [0; sqrt(diff(data(:,1)).^2+diff(data(:,2)).^2)]; %vector of distance between two consecutive points
+    cluster_number = 1; % starting cluster number
     cluster_vector = zeros(length(distance),1);
+    
     for i=1:length(distance)
-        
-        
-        if (distance(i) >= threshold)
+        % assigning cluster number to points
+        if distance(i) >= threshold
             cluster_number = cluster_number+1;
         end
         cluster_vector(i)=cluster_number;
@@ -107,26 +105,30 @@ function r = ExtractOOIs(dataForOOI)
     r.Centers = zeros(2,r.N);
     r.Diameter = zeros(1,r.N);
     r.Color = zeros(1,r.N);
-    for i = 1:r.N
-        temp = dataForOOI(cluster_vector==i,:);
-%         [xc,yc,R] = circfit(temp(:,1),temp(:,2));
-%         r.Diameter(i) = R*2;
-%         r.Centers(1,i) = xc;
-%         r.Centers(2,i) = yc;
+    
+%     for i = 1:r.N
+%         temp = data(cluster_vector==i,:);
+%         r.Centers(1,i) = mean(temp(:,1));
+%         r.Centers(2,i) = mean(temp(:,2));
 %         r.Color(i) = max(temp(:,3))~=0;
-        r.Centers(1,i) = mean(temp(:,1));
-        r.Centers(2,i) = mean(temp(:,2));
+%         [m,~] = size(temp);
+%         if m == 1
+%             r.Diameter(i) = 0;
+%         else     
+%             r.Diameter(i) = max(pdist(temp(:,1:2)));
+%         end
+%     end
+    % Filling r struct using circfit function from Izhak bucher 25/oct /1991
+    for i = 1:r.N
+        temp = data(cluster_vector==i,:);
+        [xc,yc,R] = circfit(temp(:,1),temp(:,2));
+        r.Centers(1,i) = xc;
+        r.Centers(2,i) = yc;
+        r.Diameter(i) = 2*R;
         r.Color(i) = max(temp(:,3))~=0;
-        [m,~] = size(temp);
-        if m == 1
-            r.Diameter(i) = 0;
-        else     
-            r.Diameter(i) = max(pdist(temp(:,1:2)));
-        end
     end
-    
     Filter = (r.Diameter >= 0.05 & r.Diameter <=0.20);
-    
+    %Clearing non OOI objects from r then resize r
     r.Centers(:,~Filter)=[];
     r.Diameter(~Filter)=[];
     r.Color(~Filter)=[];
@@ -134,18 +136,15 @@ function r = ExtractOOIs(dataForOOI)
     
 return;
 end
-    
+
 function PlotOOIs(OOIs,myHandle)
     if OOIs.N<1, return ; end;
-    % your part....
     myHandle.handle4.LineStyle = 'none';
     myHandle.handle4.LineWidth = 2;
     myHandle.handle5.LineStyle = 'none';
     myHandle.handle5.LineWidth = 1.5;
     set(myHandle.handle4,'xdata',OOIs.Centers(1,OOIs.Color>0),'ydata',OOIs.Centers(2,OOIs.Color>0),'color','g','marker','+','markersize',10);
     set(myHandle.handle5,'xdata',OOIs.Centers(1,OOIs.Color==0),'ydata',OOIs.Centers(2,OOIs.Color==0),'color','k','marker','+','markersize',10);
-    %plot(OOIs.Centers(1,:),OOIs.Centers(2,:),'c*');
-    %plot(OOIs.Centers(1,OOIs.Color>0),OOIs.Centers(2,OOIs.Color>0),'g*');
 return;
 end
 
