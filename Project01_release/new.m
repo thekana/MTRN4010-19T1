@@ -15,6 +15,10 @@ clc(); close all;
 % In case the caller does not specify the input argument, we propose a default one.
 if ~exist('DataFileName','var'), DataFileName ='Laser__2.mat'; end;
 
+% Create a global variable struct to be used in multiple functions
+global CCC;
+CCC = []; CCC.flagPause = 0;
+
 % load data file.
 load(DataFileName); 
 % The variable that contains the data structure is named "dataL"
@@ -33,9 +37,11 @@ myHandle.handle3 = title('');
 myHandle.handle4 = plot(0,0);       %handle for reflective OOIs
 myHandle.handle5 = plot(0,0);       %handle for non-reflective OOIs
 zoom on; grid on;
+uicontrol('Style','pushbutton','String','Pause/Cont.','Position',[10,1,80,20],'Callback',{@PushButtonCallBack,1});
 
 for i=1:N
-    
+    tic
+    while (CCC.flagPause), pause(0.15); end
     scan_i = dataL.Scans(:,i);
     ProcessScan(scan_i,myHandle);
     
@@ -43,6 +49,7 @@ for i=1:N
     set(myHandle.handle3,'string',s);
     
     pause(0.01) ;                   % 10hz refresh rate
+    toc
 end
 disp('Done. Bye.');
 
@@ -125,7 +132,7 @@ function r = ExtractOOIs(data)
         % points
         size_check = size(cluster_i);
         if size_check(1) < 3
-           disp('skip');
+           %disp('skip');
            continue;
         end
         [xc,yc,R] = circfit(cluster_i(:,1),cluster_i(:,2));
@@ -176,4 +183,14 @@ function   [xc,yc,R] = circfit(x,y)
    xc = -.5*a(1);
    yc = -.5*a(2);
    R  =  sqrt((a(1)^2+a(2)^2)/4-a(3));
+end
+
+
+function PushButtonCallBack(~,~,x)
+    global CCC;  
+    if (x==1)
+       CCC.flagPause = ~CCC.flagPause; %Switch ON->OFF->ON -> and so on.
+       disp(x);
+       disp(CCC.flagPause);
+    end
 end
