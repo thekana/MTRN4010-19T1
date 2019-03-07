@@ -107,25 +107,32 @@ function r = ExtractOOIs(data)
     r.Color = zeros(1,r.N);
     
 %     for i = 1:r.N
-%         temp = data(cluster_vector==i,:);
-%         r.Centers(1,i) = mean(temp(:,1));
-%         r.Centers(2,i) = mean(temp(:,2));
-%         r.Color(i) = max(temp(:,3))~=0;
-%         [m,~] = size(temp);
+%         cluster_i = data(cluster_vector==i,:);
+%         r.Centers(1,i) = mean(cluster_i(:,1));
+%         r.Centers(2,i) = mean(cluster_i(:,2));
+%         r.Color(i) = max(cluster_i(:,3))~=0;
+%         [m,~] = size(cluster_i);
 %         if m == 1
 %             r.Diameter(i) = 0;
 %         else     
-%             r.Diameter(i) = max(pdist(temp(:,1:2)));
+%             r.Diameter(i) = max(pdist(cluster_i(:,1:2)));
 %         end
 %     end
     % Filling r struct using circfit function from Izhak bucher 25/oct /1991
     for i = 1:r.N
-        temp = data(cluster_vector==i,:);
-        [xc,yc,R] = circfit(temp(:,1),temp(:,2));
+        cluster_i = data(cluster_vector==i,:);
+        % checking matrix size discard every cluster that has fewer than 3
+        % points
+        size_check = size(cluster_i);
+        if size_check(1) < 3
+           disp('skip');
+           continue;
+        end
+        [xc,yc,R] = circfit(cluster_i(:,1),cluster_i(:,2));
         r.Centers(1,i) = xc;
         r.Centers(2,i) = yc;
         r.Diameter(i) = 2*R;
-        r.Color(i) = max(temp(:,3))~=0;
+        r.Color(i) = max(cluster_i(:,3))~=0;
     end
     Filter = (r.Diameter >= 0.05 & r.Diameter <=0.20);
     %Clearing non OOI objects from r then resize r
