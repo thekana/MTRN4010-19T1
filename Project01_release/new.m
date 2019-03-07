@@ -112,20 +112,8 @@ function r = ExtractOOIs(data)
     r.Centers = zeros(2,r.N);
     r.Diameter = zeros(1,r.N);
     r.Color = zeros(1,r.N);
-    
-%     for i = 1:r.N
-%         cluster_i = data(cluster_vector==i,:);
-%         r.Centers(1,i) = mean(cluster_i(:,1));
-%         r.Centers(2,i) = mean(cluster_i(:,2));
-%         r.Color(i) = max(cluster_i(:,3))~=0;
-%         [m,~] = size(cluster_i);
-%         if m == 1
-%             r.Diameter(i) = 0;
-%         else     
-%             r.Diameter(i) = max(pdist(cluster_i(:,1:2)));
-%         end
-%     end
     % Filling r struct using circfit function from Izhak bucher 25/oct /1991
+    % https://au.mathworks.com/matlabcentral/fileexchange/5557-circle-fit
     for i = 1:r.N
         cluster_i = data(cluster_vector==i,:);
         % checking matrix size discard every cluster that has fewer than 3
@@ -161,30 +149,6 @@ function PlotOOIs(OOIs,myHandle)
     set(myHandle.handle5,'xdata',OOIs.Centers(1,OOIs.Color==0),'ydata',OOIs.Centers(2,OOIs.Color==0),'color','k','marker','+','markersize',10);
 return;
 end
-
-function   [xc,yc,R] = circfit(x,y)
-%
-%   [xc yx R] = circfit(x,y)
-%
-%   fits a circle  in x,y plane in a more accurate
-%   (less prone to ill condition )
-%  procedure than circfit2 but using more memory
-%  x,y are column vector where (x(i),y(i)) is a measured point
-%
-%  result is center point (yc,xc) and radius R
-%  an optional output is the vector of coeficient a
-% describing the circle's equation
-%
-%   x^2+y^2+a(1)*x+a(2)*y+a(3)=0
-%
-%  By:  Izhak bucher 25/oct /1991, 
-   x=x(:); y=y(:);
-   a=[x y ones(size(x))]\[-(x.^2+y.^2)];
-   xc = -.5*a(1);
-   yc = -.5*a(2);
-   R  =  sqrt((a(1)^2+a(2)^2)/4-a(3));
-end
-
 
 function PushButtonCallBack(~,~,x)
     global CCC;  
