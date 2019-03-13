@@ -146,7 +146,7 @@ function PlotOOIs(OOIs,myHandle)
     myHandle.handle4.LineWidth = 2;
     myHandle.handle5.LineStyle = 'none';
     myHandle.handle5.LineWidth = 1.5;
-    set(myHandle.handle4,'xdata',OOIs.Centers(1,OOIs.Color>0),'ydata',OOIs.Centers(2,OOIs.Color>0),'color','g','marker','+','markersize',10);
+    set(myHandle.handle4,'xdata',OOIs.Centers(1,OOIs.Color>0),'ydata',OOIs.Centers(2,OOIs.Color>0),'color','g','marker','*','markersize',10);
     set(myHandle.handle5,'xdata',OOIs.Centers(1,OOIs.Color==0),'ydata',OOIs.Centers(2,OOIs.Color==0),'color','k','marker','+','markersize',10);
 return;
 end
