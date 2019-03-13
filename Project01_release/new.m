@@ -40,16 +40,17 @@ zoom on; grid on;
 uicontrol('Style','pushbutton','String','Pause/Cont.','Position',[10,1,80,20],'Callback',{@PushButtonCallBack,1});
 
 for i=1:N
-    tic
+    
     while (CCC.flagPause), pause(0.15); end
     scan_i = dataL.Scans(:,i);
+    tic
     ProcessScan(scan_i,myHandle);
-    
+    toc
     s=sprintf('Showing scan #[%d]/[%d]\r',i,N);
     set(myHandle.handle3,'string',s);
     
     pause(0.01) ;                   % 10hz refresh rate
-    toc
+    
 end
 disp('Done. Bye.');
 
