@@ -5,7 +5,9 @@ clc(); close all;
 % Create a global variable struct to be used in multiple functions
 global CCC;
 CCC = []; CCC.flagPause = 0;
-
+global landmark;
+landmark.coor = [];
+landmark.id = [];
 % load data file.
 load('DataForProject02/IMU_dataC.mat');
 load('DataForProject02/Speed_dataC.mat');
@@ -31,6 +33,7 @@ ylabel('y (meters)');
 myHandle.handle3 = title('');
 myHandle.handle4 = plot(0,0);       %handle for reflective OOIs
 myHandle.handle5 = plot(0,0);       %handle for non-reflective OOIs
+landmark.handle = plot(0,0,'linestyle','none');
 zoom on; grid on;
 uicontrol('Style','pushbutton','String','Pause/Cont.','Position',[10,1,80,20],'Callback',{@PushButtonCallBack,1});
 
@@ -101,7 +104,6 @@ end
 
 %.............................
 function ProcessScan(scan,myHandle,x,y,theta)
-
     % Extract range and intensity information, from raw measurements.
     % Each "pixel" is represented by its range and intensity of reflection.
     % It is a 16 bits number whose bits 0-12 define the distance (i.e. the range)
@@ -133,6 +135,7 @@ function ProcessScan(scan,myHandle,x,y,theta)
     OOIs = ExtractOOIs(data);
     OOIs = ToGlobalCoordinateFrame(OOIs,x,y,theta);
     PlotOOIs(OOIs,myHandle);
+    IdentifyOOIs(OOIs);
 
 return;
 end
@@ -216,3 +219,32 @@ function OOIs = ToGlobalCoordinateFrame(OOIs,x,y,theta)
     OOIs.Centers = R * OOIs.Centers + [x;y];
     
 end
+
+function IdentifyOOIs(r)
+    global landmark;
+    OOIarray = r.Centers(:,r.Color>0);
+    [~,n] = size(OOIarray);
+    if isempty(landmark.coor)
+        % add all ooi and give unique id
+        landmark.coor = OOIarray;
+        landmark.id = 1:length(landmark.coor);
+    elseif ~isempty(OOIarray)
+        % matching process
+        for i = 1:n 
+            match = 0;
+            for j = landmark.id
+                distance = norm(OOIarray(:,i)-landmark.coor(:,j));
+                if (distance <= 0.4)
+                    match = 1;
+                end
+            end
+            if ~match
+                landmark.coor = [landmark.coor,OOIarray(:,i)];
+                landmark.id = [landmark.id,j+1];
+            end
+        end    
+    end     
+    set(landmark.handle,'xdata',landmark.coor(1,:),'ydata',landmark.coor(2,:),'color','k','marker','+','markersize',10);
+end
+
+    
