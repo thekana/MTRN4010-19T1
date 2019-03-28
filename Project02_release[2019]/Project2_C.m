@@ -1,14 +1,11 @@
-
 clc(); close all;
-
-
-% Create a global variable struct to be used in multiple functions
+%% Create a global variable struct to be used in multiple functions
 global CCC;
 CCC = []; CCC.flagPause = 0;
 global landmark;
 landmark.coor = [];
 landmark.id = [];
-% load data file.
+%% Setup loading data file.
 load('DataForProject02/IMU_dataC.mat');
 load('DataForProject02/Speed_dataC.mat');
 load('DataForProject02/Laser__2C.mat');
@@ -24,16 +21,22 @@ load('DataForProject02/Laser__2C.mat');
 N = dataL.N;                        %number of scans in this squence.
 figure('visible','on');
 clf();
-%myHandle.handle1 = plot(0,0,'b.');  %handle for all points
 hold on;
-%myHandle.handle2 = plot(0,0,'r+');  %handle for reflective points
 axis([-10,10,0,20]);                %focuses plot on this region ( of interest in L220)
 xlabel('x (meters)');
 ylabel('y (meters)');
 myHandle.handle3 = title('');
 myHandle.handle4 = plot(0,0);       %handle for reflective OOIs
 myHandle.handle5 = plot(0,0);       %handle for non-reflective OOIs
+%% Creating landmark and currently detected OOIs graphic handles
 landmark.handle = plot(0,0,'linestyle','none');
+landmark.text = text(0,0,'');
+landmark.DA = text(zeros(1,5),zeros(1,5),'');
+%% Creating robot body
+robot = [];
+robot.body = plot(0,0);
+robot.heading = plot(0,0);
+%%
 zoom on; grid on;
 uicontrol('Style','pushbutton','String','Pause/Cont.','Position',[10,1,80,20],'Callback',{@PushButtonCallBack,1});
 
@@ -41,11 +44,10 @@ for i=1:N
     
     while (CCC.flagPause), pause(0.15); end
     scan_i = dataL.Scans(:,i);
-    tic
-    ProcessScan(scan_i,myHandle,x(i),y(i),theta(i));
-    toc
+    ProcessScan(scan_i,myHandle,x(i),y(i),theta(i));    %this function does everything
     s=sprintf('Showing scan #[%d]/[%d]\r',i,N);
     set(myHandle.handle3,'string',s);
+    plotRobot(robot,x(i),y(i),theta(i));
     
     pause(0.01) ;                   % 10hz refresh rate
     
@@ -83,11 +85,15 @@ function [xKL,yKL,thetaKL] = GetData(IMU,Vel,dataL)
     yKL(1) = 0;
 
     j = 2;
+    
+    % must obtain the robot position and heading at the time scan[i]
     for i = 2:L
         dt = time(i)-time(i-1); % find dt
         thetaK(i) = thetaK(i-1) + dt * yawC(i-1); % euler approx
         xK(i) = xK(i-1) + dt * Vel.speeds(i-1)*cos(thetaK(i));
         yK(i) = yK(i-1) + dt * Vel.speeds(i-1)*sin(thetaK(i));
+        
+        % handling laser scan and position frequency difference
         if (j <= length(Laser_time) && Laser_time(j) - time(i-1)< dt)
             dtL = Laser_time(j) - time(i-1);
             thetaKL(j) = thetaK(i-1) + dtL * yawC(i-1); % euler approx
@@ -133,9 +139,9 @@ function ProcessScan(scan,myHandle,x,y,theta)
     data = [X,Y,single(intensities)];   % concat vectors
 
     OOIs = ExtractOOIs(data);
-    OOIs = ToGlobalCoordinateFrame(OOIs,x,y,theta);
+    OOIs = ToGlobalCoordinateFrame(OOIs,x,y,theta); % convert OOIs to global coor
     PlotOOIs(OOIs,myHandle);
-    IdentifyOOIs(OOIs);
+    IdentifyOOIs(OOIs); % identify landmark && data association
 
 return;
 end
@@ -175,7 +181,7 @@ function r = ExtractOOIs(data)
         r.Diameter(i) = 2*R;
         r.Color(i) = max(cluster_i(:,3))~=0;
     end
-    Filter = (r.Diameter >= 0.05 & r.Diameter <=0.20);
+    Filter = (r.Diameter >= 0.03 & r.Diameter <=0.25);
     %Clearing non OOI objects from r then resize r
     r.Centers(:,~Filter)=[];
     r.Diameter(~Filter)=[];
@@ -207,7 +213,7 @@ end
 
 function OOIs = ToGlobalCoordinateFrame(OOIs,x,y,theta)
     
-    d = 0.46;
+    d = 0.46; % from project specs
     % negate x-coordinate
     OOIs.Centers(1,:) = -OOIs.Centers(1,:);
     % adding d
@@ -224,27 +230,41 @@ function IdentifyOOIs(r)
     global landmark;
     OOIarray = r.Centers(:,r.Color>0);
     [~,n] = size(OOIarray);
+    DA = [];
     if isempty(landmark.coor)
         % add all ooi and give unique id
         landmark.coor = OOIarray;
         landmark.id = 1:length(landmark.coor);
-    elseif ~isempty(OOIarray)
-        % matching process
-        for i = 1:n 
-            match = 0;
-            for j = landmark.id
-                distance = norm(OOIarray(:,i)-landmark.coor(:,j));
-                if (distance <= 0.4)
-                    match = 1;
-                end
+        landmark.text = text(landmark.coor(1,:)+0.1,landmark.coor(2,:)-0.1,string(landmark.id));
+    end
+    for i = 1:n 
+        for j = landmark.id
+            distance = norm(OOIarray(:,i)-landmark.coor(:,j));
+            if (distance <= 0.4)
+                temp = [OOIarray(:,i);j];
+                DA = [DA,temp];
             end
-            if ~match
-                landmark.coor = [landmark.coor,OOIarray(:,i)];
-                landmark.id = [landmark.id,j+1];
-            end
-        end    
-    end     
+        end
+    end    
+    
     set(landmark.handle,'xdata',landmark.coor(1,:),'ydata',landmark.coor(2,:),'color','k','marker','+','markersize',10);
+    
+    for i = 1:5
+        set(landmark.DA(i),'String','');
+        if ~isempty(DA)
+           if i<=length(DA(3,:))
+               set(landmark.DA(i),'Position',DA(1:2,i),'String',string(DA(3,i)));
+           end
+        end    
+    end
 end
 
+function plotRobot(robot,x,y,theta)
+    set(robot.body,'xdata',x,'ydata',y,'markersize',5,'marker','diamond');
+    R = [ cos(theta), -sin(theta);
+          sin(theta), cos(theta)];
+    coor = [0 0.2 0.4 0.8 1; 0 0 0 0 0];
+    coor = R * coor + [x;y];
+    set(robot.heading,'xdata',coor(1,:),'ydata',coor(2,:),'markersize',2);
+end
     
