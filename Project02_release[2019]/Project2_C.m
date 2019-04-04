@@ -22,7 +22,7 @@ N = dataL.N;                        %number of scans in this squence.
 figure('visible','on');
 clf();
 hold on;
-axis([-10,10,0,20]);                %focuses plot on this region ( of interest in L220)
+axis([-5,5,0,10]);                %focuses plot on this region ( of interest in L220)
 xlabel('x (meters)');
 ylabel('y (meters)');
 myHandle.handle3 = title('');
@@ -230,7 +230,7 @@ function IdentifyOOIs(r)
     global landmark;
     OOIarray = r.Centers(:,r.Color>0);
     [~,n] = size(OOIarray);
-    DA = [];
+    DA = []; %data association
     if isempty(landmark.coor)
         % add all ooi and give unique id
         landmark.coor = OOIarray;
