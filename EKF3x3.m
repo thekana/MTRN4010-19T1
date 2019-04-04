@@ -115,17 +115,18 @@ NavigationMap = CreateSomeMap(n_usedLanmarks) ;  %creates a artificial map!
 % In variables "Xe" and "P" :These are the EKF ESTIMATES (Expected value and covariance matrix)
 % Initial conditions of the estimates (identical to the real ones, as in
 % the lab)( I Assume we know the initial condition of the system)
-Xe = [ 0; 0;pi/2;0;0 ] ; 
-P = zeros(5,5) ;            % initial quality --> perfect (covariance =zero )
+Xe = [ 0; 0;pi/2 ] ; 
+P = zeros(3,3) ;            % initial quality --> perfect (covariance =zero )
+P_u = diag([stdDevSpeed^2,stdDevGyro^2]);
 % Why perfect? (BECAUSE in this case we DO ASSUME we know perfectly the initial condition)
 
 % These are the "opn-loop" dead reckoning ESTIMATES
-Xdr = [ 0; 0;pi/2;0;0 ] ;
+Xdr = [ 0; 0;pi/2 ] ;
 
 % Some buffers to store the intermediate values during the experiment (so we can plot them, later)
-Xreal_History= zeros(5,Li) ;
-Xe_History= zeros(5,Li) ;
-XeDR_History= zeros(5,Li) ;
+Xreal_History= zeros(3,Li) ;
+Xe_History= zeros(3,Li) ;
+XeDR_History= zeros(3,Li) ;
 
 % .....................................................
 % I assume that every time we apply the process model to predict the evolution of the system for a 
@@ -135,7 +136,7 @@ XeDR_History= zeros(5,Li) ;
 % Although you can use this proposed Q, it can be improved. Read
 % "MTRN4010_L06_Noise_in_the_inputs_of_ProcessModel.pdf" in order to implement a good refinement. 
 
-Q = diag( [ (0.01)^2 ,(0.01)^2 , (1*pi/180)^2 ,stdDevSpeed^2,-1]) ;
+Q1 = diag( [ (0.01)^2 ,(0.01)^2 , (1*pi/180)^2]) ;
 % Q matrix. Represent the covariance of the uncertainty about the process model.
 % .....................................................
 
@@ -175,8 +176,9 @@ for i=1:Li,     % loop
     % Estimate new covariance, associated to the state after prediction
     % First , I evaluate the Jacobian matrix of the process model (see lecture notes), at X=X(k|k).
     % You should write the analytical expression on paper to understand the following line.
-    J = [ [1,0,-Dt*Noisy_speed*sin(Xe(3)),Dt*cos(Xe(3)),0  ]  ; [0,1,Dt*Noisy_speed*cos(Xe(3)), Dt*sin(Xe(3)),0] ;    [ 0,0,1,0,-Dt ]; [0,0,0,-1,0];[0,0,0,0,1] ] ; 
-    
+    J = [ [1,0,-Dt*Noisy_speed*sin(Xe(3))]  ; [0,1,Dt*Noisy_speed*cos(Xe(3))];[ 0,0,1]];
+    J_u = [Dt*cos(Xe(3)),0;Dt*sin(Xe(3)),0;0,Dt];
+    Q = J_u*P_u*J_u'+Q1;
     % then I calculate the new coveraince, after the prediction P(K+1|K) = J*P(K|K)*J'+Q ;
     P = J*P*J'+Q ; %TODO
     % ATTENTION: we need, in our case, to propose a consistent Q matrix (this is part of your assignment!)
@@ -223,8 +225,8 @@ for i=1:Li,     % loop
     
         
             % here is it. "H". I reuse some previous calculations.
-            H = [  -eDX/eDD , -eDY/eDD , 0,0,0;
-                eDY/eDD^2, -eDX/eDD^2, -1,0,0] ;   % Jacobian of h(X); size 1x3
+            H = [  -eDX/eDD , -eDY/eDD , 0;
+                eDY/eDD^2, -eDX/eDD^2, -1] ;   % Jacobian of h(X); size 1x3
         
             % the expected distances to this landmark ( "h(Xe)" )
             ExpectedRange = eDD ;   % just a coincidence: we already calculated them for the Jacobian, so I reuse it. 
@@ -284,7 +286,7 @@ return ;
 % --- THIS IS THE PROCESS MODEL of MY SYSTEM. (it is a Kinemetic model)
     
 function Xnext=RunProcessModel(X,speed,GyroZ,dt) 
-    Xnext = X + dt*[ speed*cos(X(3)) ;  speed*sin(X(3)) ; GyroZ ;0;0]; %+ noise;
+    Xnext = X + dt*[ speed*cos(X(3)) ;  speed*sin(X(3)) ; GyroZ]; %+ noise;
 return ;
 
 
@@ -315,7 +317,7 @@ return ;
 % in real cases, they do happen, we do not propose them.
 function [speed,GyroZ] = SimuControl(X,t)
     speed = 2 ;                                         % cruise speed, 2m/s  ( v ~ 7km/h)
-    GyroZ = 3*pi/180 + sin(0.1*2*pi*t/50)*.02 ;         % some crazy driver moving the steering wheel...
+    GyroZ = 3*pi/180 + sin(0.1*2*pi*t/50)*.02 + 1*pi/180;         % some crazy driver moving the steering wheel...
 return ;
 
 
@@ -337,7 +339,7 @@ return ;
 
 function InitSimulation(stdDevSpeed,stdDevGyro,sdev_rangeMeasurement,DtObservations,sdev_angleMeasurement)
     global ContextSimulation;
-    ContextSimulation.Xreal = [ 0; 0;pi/2;0;0 ] ;     % [x;y;phi]
+    ContextSimulation.Xreal = [ 0; 0;pi/2] ;     % [x;y;phi]
     ContextSimulation.stdDevSpeed = stdDevSpeed;
     ContextSimulation.stdDevGyro = stdDevGyro;
     %ContextSimulation.Xreal = [0;0;pi/2;0;0];
