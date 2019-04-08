@@ -227,7 +227,7 @@ for i=1:Li,     % loop
         
             % here is it. "H". I reuse some previous calculations.
             H = [  -eDX/eDD , -eDY/eDD , 0,0;
-                eDY/eDD^2, -eDX/eDD^2, -1,0] ;   % Jacobian of h(X); size 1x3
+                eDY/eDD^2, -eDX/eDD^2, -1,0] ;   % Jacobian of h(X); size 2x3
         
             % the expected distances to this landmark ( "h(Xe)" )
             ExpectedRange = eDD ;   % just a coincidence: we already calculated them for the Jacobian, so I reuse it. 
