@@ -247,7 +247,7 @@ for i=1:Li,     % loop
             % Some intermediate steps for the EKF (as presented in the lecture notes)
             S = R + H*P*H' ;
             iS=inv(S);                 % iS = inv(S) ;   % in this case S is 1x1 so inv(S) is just 1/S
-            K = P*H'*iS ;           % Kalman gain
+            K = P*H'*iS;           % Kalman gain
             % ----- finally, we do it...We obtain  X(k+1|k+1) and P(k+1|k+1)
             
             Xe = Xe+K*z ;       % update the  expected value

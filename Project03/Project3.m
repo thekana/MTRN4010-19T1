@@ -15,10 +15,6 @@ load('DataForProject02/Laser__2C.mat');
 % The variable that contains the data structure is named "dataL"
 % (because it was created under that name and saved)
 
-% Obtain an estimate of the position and orientation of the platform at
-% at scan's timestamp
-[x,y,theta] = GetData(IMU,Vel,dataL);
-
 
 N = dataL.N;                        %number of scans in this squence.
 figure('visible','on');
@@ -27,6 +23,7 @@ hold on;
 axis([-5,5,0,10]);                %focuses plot on this region ( of interest in L220)
 xlabel('x (meters)');
 ylabel('y (meters)');
+global myHandle;
 myHandle.handle3 = title('');
 myHandle.handle4 = plot(0,0);       %handle for reflective OOIs
 myHandle.handle5 = plot(0,0);       %handle for non-reflective OOIs
@@ -35,29 +32,49 @@ landmark.handle = plot(0,0,'linestyle','none');
 landmark.text = text(0,0,'');
 landmark.DA = text(zeros(1,5),zeros(1,5),'');
 %% Creating robot body
-robot = [];
+global robot;
+
 robot.body = plot(0,0);
 robot.heading = plot(0,0);
 %%
 zoom on; grid on;
 uicontrol('Style','pushbutton','String','Pause/Cont.','Position',[10,1,80,20],'Callback',{@PushButtonCallBack,1});
 
-for i=1:N
-    
-    while (CCC.flagPause), pause(0.15); end
-    scan_i = dataL.Scans(:,i);
-    ProcessScan(scan_i,myHandle,x(i),y(i),theta(i));    %this function does everything
-    s=sprintf('Showing scan #[%d]/[%d]\r',i,N);
-    set(myHandle.handle3,'string',s);
-    plotRobot(robot,x(i),y(i),theta(i));
-    
-    pause(0.01) ;                   % 10hz refresh rate
-    
-end
+
+%%Populating Xe using EKF
+DataHandling(IMU,Vel,dataL);
+
+
+%%For loop to plot I guess
+% for i=1:N
+%     
+%     while (CCC.flagPause), pause(0.15); end
+%     s=sprintf('Showing scan #[%d]/[%d]\r',i,N);
+%     set(myHandle.handle3,'string',s);
+%     plotRobot(robot,x(i),y(i),theta(i));
+%     
+%     pause(0.01) ;                   % 10hz refresh rate
+%     
+% end
 disp('Done. Bye.');
 
 
-function [xKL,yKL,thetaKL] = GetData(IMU,Vel,dataL)
+function DataHandling(IMU,Vel,dataL)
+    %%% Noises
+    stdDevGyro = 1.4;
+    stdDevSpeed = 0.4;
+    stdRangeMeasure = 0.16;
+    stdBearingMeasure = 1.1;
+    
+    global landmark;
+    global myHandle;
+    global CCC;
+    %%Matrices
+    P = zeros(4,4);
+    P(4,4) = (4*pi/180)^2;
+    Pu = diag([stdDevSpeed^2,stdDevGyro^2]);
+    Q1 = diag([ (0.01)^2 ,(0.01)^2 , (1*pi/180)^2,0]);
+    %%
     % remove bias
     time = double(IMU.times-IMU.times(1))/10000;
     Laser_time = double(dataL.times-dataL.times(1))/10000;
@@ -70,37 +87,66 @@ function [xKL,yKL,thetaKL] = GetData(IMU,Vel,dataL)
     yawC = yaw - Bias; % w(K) corrected
     L = length(yawC);
 
-    % buffer for variables
-    thetaK = zeros(1,L);
-    xK = zeros(1,L);
-    yK = zeros(1,L);
-    % setting initial conditions
-    thetaK(1) = pi/2;
-    xK(1) = 0;
-    yK(1) = 0;
-
-    thetaKL = zeros(1,length(Laser_time));
-    xKL = zeros(1,length(Laser_time));
-    yKL = zeros(1,length(Laser_time));
-    thetaKL(1) = pi/2;
-    xKL(1) = 0;
-    yKL(1) = 0;
-
+    % buffer for variables temp 40K length
+    Xtemp = zeros(4,L);
+    Xtemp(:,1) =  [0;0;pi/2;0];
+    % buffer for what we actually care about
+    Xe = zeros(4,length(Laser_time));
+    Xe(:,1) = [0;0;pi/2;0];
+    
     j = 2;
     
     % must obtain the robot position and heading at the time scan[i]
     for i = 2:L
         dt = time(i)-time(i-1); % find dt
-        thetaK(i) = thetaK(i-1) + dt * yawC(i-1); % euler approx
-        xK(i) = xK(i-1) + dt * Vel.speeds(i-1)*cos(thetaK(i));
-        yK(i) = yK(i-1) + dt * Vel.speeds(i-1)*sin(thetaK(i));
-        
+        Xtemp(:,i) = Xtemp(:,i-1) + dt*[Vel.speeds(i-1)*cos(Xtemp(3,i));Vel.speeds(i-1)*sin(Xtemp(3,i)); yawC(i-1);0];     
         % handling laser scan and position frequency difference
         if (j <= length(Laser_time) && Laser_time(j) - time(i-1)< dt)
             dtL = Laser_time(j) - time(i-1);
-            thetaKL(j) = thetaK(i-1) + dtL * yawC(i-1); % euler approx
-            xKL(j) = xK(i-1) + dtL * Vel.speeds(i-1)*cos(thetaK(i));
-            yKL(j) = yK(i-1) + dtL * Vel.speeds(i-1)*sin(thetaK(i));
+            %%Matrices
+            J = [ [1,0,-dtL*Vel.speeds(i-1)*sin(Xe(3,j-1)),0]  ; [0,1,dtL*Vel.speeds(i-1)*cos(Xe(3,j-1)),0];[ 0,0,1,-dtL]; [0,0,0,1]]; %4x4
+            Ju = [dtL*cos(Xe(3,j-1)),0;dtL*sin(Xe(3,j-1)),0;0,dtL;0,0]; %4x2
+            Q = Ju*Pu*Ju'+Q1;
+            P = J*P*J'+Q ;
+            %%
+            Xe(:,j) = Xtemp(:,i-1) + dtL*[Vel.speeds(i-1)*cos(Xtemp(3,i));Vel.speeds(i-1)*sin(Xtemp(3,i)); yawC(i-1);0];
+            ProcessScan(dataL.Scans(:,j-1),Xe(1,j-1),Xe(2,j-1),Xe(3,j-1));
+            if(landmark.detected >0)
+                %EKF parts
+                for u = 1:landmark.detected
+                    ID = landmark.DAcoor(3,u);
+                    d = 0.46;
+                    %Calc expected
+                    eDX = (landmark.coor(1,ID)-Xe(1,j)+ d*cos(Xe(3,j)));
+                    eDY = (landmark.coor(2,ID)-Xe(2,j)+ d*sin(Xe(3,j)));
+                    eDD = sqrt( eDX*eDX + eDY*eDY );
+                    H = [  -eDX/eDD , -eDY/eDD , 0,0;
+                        eDY/eDD^2, -eDX/eDD^2, -1,0]; 
+                    ExpectedRange = eDD;
+                    ExpectedAngle = atan2(eDY,eDX) - Xe(3,j) + pi/2;
+                    %Calc measurement
+                    eMX = (landmark.DAcoor(1,u)-Xe(1,j));
+                    eMY = (landmark.DAcoor(2,u)-Xe(2,j));
+                    eMD = sqrt( eMX*eMX + eMY*eMY );
+                    MeasuredRange = eMD;
+                    MeasuredAngle = atan2(eMY,eMX) - Xe(3,j) + pi/2;
+                    
+                    z = [MeasuredRange-ExpectedRange;
+                        wrapToPi(MeasuredAngle-ExpectedAngle)];
+                    R = diag([stdRangeMeasure^2*4 stdBearingMeasure^2*4]);
+                    %%EKFSteps
+                    S = R + H*P*H';
+                    iS=inv(S);
+                    K = P*H'*iS;
+                    Xe(:,j) = Xe(:,j)+K*z;
+                    P = P-K*H*P;
+                end    
+            end
+            while (CCC.flagPause), pause(0.15); end
+            s=sprintf('Showing scan #[%d]/[%d]\r',j-1,length(Laser_time));
+            set(myHandle.handle3,'string',s);
+            plotRobot(Xe(1,j-1),Xe(1,2-1),Xe(3,j-1));
+            pause(0.01) ;                   % 10hz refresh rate
             j = j + 1;
         end
     end
@@ -111,13 +157,12 @@ function [xKL,yKL,thetaKL] = GetData(IMU,Vel,dataL)
 end
 
 %.............................
-function ProcessScan(scan,myHandle,x,y,theta)
+function ProcessScan(scan,x,y,theta)
     % Extract range and intensity information, from raw measurements.
     % Each "pixel" is represented by its range and intensity of reflection.
     % It is a 16 bits number whose bits 0-12 define the distance (i.e. the range)
     % in cm (a number 0<=r<2^13), and bits 13-15 indicate the intensity 
     %( a number 0<=i<8 ).
-
     % We extract range and intensity, here.
     %useful masks, for dealing with bits.
     mask1FFF = uint16(2^13-1);
@@ -142,7 +187,7 @@ function ProcessScan(scan,myHandle,x,y,theta)
 
     OOIs = ExtractOOIs(data);
     OOIs = ToGlobalCoordinateFrame(OOIs,x,y,theta); % convert OOIs to global coor
-    PlotOOIs(OOIs,myHandle);
+    PlotOOIs(OOIs);
     IdentifyOOIs(OOIs); % identify landmark && data association
 
 return;
@@ -193,7 +238,8 @@ function r = ExtractOOIs(data)
 return;
 end
 
-function PlotOOIs(OOIs,myHandle)
+function PlotOOIs(OOIs)
+    global myHandle;
     if OOIs.N<1, return ; end;
     myHandle.handle4.LineStyle = 'none';
     myHandle.handle4.LineWidth = 2;
@@ -232,8 +278,8 @@ function IdentifyOOIs(r)
     global landmark;
     OOIarray = r.Centers(:,r.Color>0);
     [~,n] = size(OOIarray);
-    landmark.detected = n;
     DA = []; %data association
+    landmark.detected = 0;
     if isempty(landmark.coor)
         % add all ooi and give unique id
         landmark.coor = OOIarray;
@@ -249,6 +295,9 @@ function IdentifyOOIs(r)
             end
         end
         landmark.DAcoor = DA;
+        if ~isempty(DA)
+            landmark.detected = length(DA(3,:));
+        end
     end    
     
     set(landmark.handle,'xdata',landmark.coor(1,:),'ydata',landmark.coor(2,:),'color','k','marker','+','markersize',10);
@@ -263,7 +312,8 @@ function IdentifyOOIs(r)
     end
 end
 
-function plotRobot(robot,x,y,theta)
+function plotRobot(x,y,theta)
+    global robot;
     set(robot.body,'xdata',x,'ydata',y,'markersize',5,'marker','diamond');
     R = [ cos(theta), -sin(theta);
           sin(theta), cos(theta)];
