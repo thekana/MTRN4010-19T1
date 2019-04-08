@@ -5,6 +5,8 @@ CCC = []; CCC.flagPause = 0;
 global landmark;
 landmark.coor = [];
 landmark.id = [];
+landmark.detected = 0;
+landmark.DAcoor = [];
 %% Setup loading data file.
 load('DataForProject02/IMU_dataC.mat');
 load('DataForProject02/Speed_dataC.mat');
@@ -48,11 +50,6 @@ for i=1:N
     s=sprintf('Showing scan #[%d]/[%d]\r',i,N);
     set(myHandle.handle3,'string',s);
     plotRobot(robot,x(i),y(i),theta(i));
-    % 0. Prepare J Q Pu Matrices using initial condition
-    % 1. Do a process model
-    % 2. Need to get landmarks locations
-    %
-    
     
     pause(0.01) ;                   % 10hz refresh rate
     
@@ -147,8 +144,7 @@ function ProcessScan(scan,myHandle,x,y,theta)
     OOIs = ToGlobalCoordinateFrame(OOIs,x,y,theta); % convert OOIs to global coor
     PlotOOIs(OOIs,myHandle);
     IdentifyOOIs(OOIs); % identify landmark && data association
-    %% ekf
-    
+
 return;
 end
 
@@ -236,6 +232,7 @@ function IdentifyOOIs(r)
     global landmark;
     OOIarray = r.Centers(:,r.Color>0);
     [~,n] = size(OOIarray);
+    landmark.detected = n;
     DA = []; %data association
     if isempty(landmark.coor)
         % add all ooi and give unique id
@@ -251,6 +248,7 @@ function IdentifyOOIs(r)
                 DA = [DA,temp];
             end
         end
+        landmark.DAcoor = DA;
     end    
     
     set(landmark.handle,'xdata',landmark.coor(1,:),'ydata',landmark.coor(2,:),'color','k','marker','+','markersize',10);
