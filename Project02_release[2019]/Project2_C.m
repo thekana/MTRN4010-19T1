@@ -91,10 +91,10 @@ function [xKL,yKL,thetaKL] = GetData(IMU,Vel,dataL)
     % must obtain the robot position and heading at the time scan[i]
     for i = 2:L
         dt = time(i)-time(i-1); % find dt
-        thetaK(i) = thetaK(i-1) + dt * yawC(i-1); % euler approx
+        thetaK(i) = thetaK(i-1) + dt * yawC(i-1);
         xK(i) = xK(i-1) + dt * Vel.speeds(i-1)*cos(thetaK(i));
         yK(i) = yK(i-1) + dt * Vel.speeds(i-1)*sin(thetaK(i));
-        
+         % euler approx
         % handling laser scan and position frequency difference
         if (j <= length(Laser_time) && Laser_time(j) - time(i-1)< dt)
             dtL = Laser_time(j) - time(i-1);

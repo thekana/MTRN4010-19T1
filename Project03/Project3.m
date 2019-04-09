@@ -7,6 +7,7 @@ landmark.coor = [];
 landmark.id = [];
 landmark.detected = 0;
 landmark.DAcoor = [];
+landmark.localOOIs = [];
 %% Setup loading data file.
 load('DataForProject02/IMU_dataC.mat');
 load('DataForProject02/Speed_dataC.mat');
@@ -27,6 +28,7 @@ global myHandle;
 myHandle.handle3 = title('');
 myHandle.handle4 = plot(0,0);       %handle for reflective OOIs
 myHandle.handle5 = plot(0,0);       %handle for non-reflective OOIs
+myHandle.real = plot(0,0);
 %% Creating landmark and currently detected OOIs graphic handles
 landmark.handle = plot(0,0,'linestyle','none');
 landmark.text = text(0,0,'');
@@ -34,6 +36,8 @@ landmark.DA = text(zeros(1,5),zeros(1,5),'');
 %% Creating robot body
 global robot;
 
+robot.trace = plot(0,0);
+robot.traceData = [];
 robot.body = plot(0,0);
 robot.heading = plot(0,0);
 %%
@@ -99,7 +103,9 @@ function DataHandling(IMU,Vel,dataL)
     % must obtain the robot position and heading at the time scan[i]
     for i = 2:L
         dt = time(i)-time(i-1); % find dt
-        Xtemp(:,i) = Xtemp(:,i-1) + dt*[Vel.speeds(i-1)*cos(Xtemp(3,i));Vel.speeds(i-1)*sin(Xtemp(3,i)); yawC(i-1);0];     
+        Xtemp(3,i) = Xtemp(3,i-1) + dt*yawC(i-1); 
+        Xtemp(1:2,i) = Xtemp(1:2,i-1) + dt*[Vel.speeds(i-1)*cos(Xtemp(3,i));Vel.speeds(i-1)*sin(Xtemp(3,i))];
+        Xtemp(4,i) = Xtemp(4,i-1) + dt*0;
         % handling laser scan and position frequency difference
         if (j <= length(Laser_time) && Laser_time(j) - time(i-1)< dt)
             dtL = Laser_time(j) - time(i-1);
@@ -110,27 +116,36 @@ function DataHandling(IMU,Vel,dataL)
             P = J*P*J'+Q ;
             %%
             Xe(:,j) = Xtemp(:,i-1) + dtL*[Vel.speeds(i-1)*cos(Xtemp(3,i));Vel.speeds(i-1)*sin(Xtemp(3,i)); yawC(i-1);0];
-            ProcessScan(dataL.Scans(:,j-1),Xe(1,j-1),Xe(2,j-1),Xe(3,j-1));
+            %ProcessScan(dataL.Scans(:,j-1),Xe(1,j-1),Xe(2,j-1),Xe(3,j-1));
+            Local_OOIs = ProcessScan(dataL.Scans(:,j-1));
+            Global_OOIs = ToGlobalCoordinateFrame(Local_OOIs,Xe(1,j-1),Xe(2,j-1),Xe(3,j-1)); % convert OOIs to global coor
+            PlotOOIs(Global_OOIs); %Will plot only bright points
+            DataAssociation(Global_OOIs,Local_OOIs); % identify landmark && data association
             if(landmark.detected >0)
                 %EKF parts
                 for u = 1:landmark.detected
                     ID = landmark.DAcoor(3,u);
                     d = 0.46;
                     %Calc expected
-                    eDX = (landmark.coor(1,ID)-Xe(1,j)+ d*cos(Xe(3,j)));
-                    eDY = (landmark.coor(2,ID)-Xe(2,j)+ d*sin(Xe(3,j)));
+                    eDX = (landmark.coor(1,ID)-Xe(1,j)+d*cos(Xe(3,j)));
+                    eDY = (landmark.coor(2,ID)-Xe(2,j)+d*sin(Xe(3,j)));
                     eDD = sqrt( eDX*eDX + eDY*eDY );
                     H = [  -eDX/eDD , -eDY/eDD , 0,0;
                         eDY/eDD^2, -eDX/eDD^2, -1,0]; 
                     ExpectedRange = eDD;
                     ExpectedAngle = atan2(eDY,eDX) - Xe(3,j) + pi/2;
                     %Calc measurement
-                    eMX = (landmark.DAcoor(1,u)-Xe(1,j));
-                    eMY = (landmark.DAcoor(2,u)-Xe(2,j));
+%                     eMX = (landmark.DAcoor(1,u)-Xe(1,j));
+%                     eMY = (landmark.DAcoor(2,u)-Xe(2,j));
+%                     eMD = sqrt( eMX*eMX + eMY*eMY );
+%                     MeasuredRange = eMD;
+%                     MeasuredAngle = atan2(eMY,eMX) - Xe(3,j) + pi/2;
+
+                    eMX = (landmark.localOOIs(1,u));
+                    eMY = (landmark.localOOIs(2,u));
                     eMD = sqrt( eMX*eMX + eMY*eMY );
                     MeasuredRange = eMD;
                     MeasuredAngle = atan2(eMY,eMX) - Xe(3,j) + pi/2;
-                    
                     z = [MeasuredRange-ExpectedRange;
                         wrapToPi(MeasuredAngle-ExpectedAngle)];
                     R = diag([stdRangeMeasure^2*4 stdBearingMeasure^2*4]);
@@ -143,21 +158,21 @@ function DataHandling(IMU,Vel,dataL)
                 end    
             end
             while (CCC.flagPause), pause(0.15); end
-            s=sprintf('Showing scan #[%d]/[%d]\r',j-1,length(Laser_time));
+            s=sprintf('Showing scan #[%d]/[%d]\r',j,length(Laser_time));
             set(myHandle.handle3,'string',s);
-            plotRobot(Xe(1,j-1),Xe(1,2-1),Xe(3,j-1));
+            plotRobot(Xe(1,j-1),Xe(2,j-1),Xe(3,j-1));
             pause(0.01) ;                   % 10hz refresh rate
             j = j + 1;
         end
     end
-
+        set(myHandle.real,'xdata',Xtemp(1,:),'ydata',Xtemp(2,:),'color','r')
     % convert from radian to degree
     % thetaK = thetaK * 180/pi;
     % thetaKL = thetaKL * 180/pi;
 end
 
 %.............................
-function ProcessScan(scan,x,y,theta)
+function OOIs=ProcessScan(scan)
     % Extract range and intensity information, from raw measurements.
     % Each "pixel" is represented by its range and intensity of reflection.
     % It is a 16 bits number whose bits 0-12 define the distance (i.e. the range)
@@ -186,9 +201,6 @@ function ProcessScan(scan,x,y,theta)
     data = [X,Y,single(intensities)];   % concat vectors
 
     OOIs = ExtractOOIs(data);
-    OOIs = ToGlobalCoordinateFrame(OOIs,x,y,theta); % convert OOIs to global coor
-    PlotOOIs(OOIs);
-    IdentifyOOIs(OOIs); % identify landmark && data association
 
 return;
 end
@@ -274,27 +286,34 @@ function OOIs = ToGlobalCoordinateFrame(OOIs,x,y,theta)
     
 end
 
-function IdentifyOOIs(r)
+function DataAssociation(r,rLocal)
     global landmark;
-    OOIarray = r.Centers(:,r.Color>0);
-    [~,n] = size(OOIarray);
+    OOIglobal = r.Centers(:,r.Color>0);
+    OOIlocal = rLocal.Centers(:,rLocal.Color>0);
+    %negate Xaxis in local OOI
+    OOIlocal(1,:) = -OOIlocal(1,:);
+    [~,n] = size(OOIglobal);
     DA = []; %data association
+    Measured = [];
     landmark.detected = 0;
     if isempty(landmark.coor)
         % add all ooi and give unique id
-        landmark.coor = OOIarray;
+        landmark.coor = OOIglobal;
         landmark.id = 1:length(landmark.coor);
         landmark.text = text(landmark.coor(1,:)+0.1,landmark.coor(2,:)-0.1,string(landmark.id));
     end
     for i = 1:n 
         for j = landmark.id
-            distance = norm(OOIarray(:,i)-landmark.coor(:,j));
+            distance = norm(OOIglobal(:,i)-landmark.coor(:,j));
             if (distance <= 0.4)
-                temp = [OOIarray(:,i);j];
+                temp = [OOIglobal(:,i);j];
                 DA = [DA,temp];
+                temp = [OOIlocal(:,i);j];
+                Measured = [Measured,temp];
             end
         end
         landmark.DAcoor = DA;
+        landmark.localOOIs = Measured;
         if ~isempty(DA)
             landmark.detected = length(DA(3,:));
         end
@@ -314,11 +333,13 @@ end
 
 function plotRobot(x,y,theta)
     global robot;
-    set(robot.body,'xdata',x,'ydata',y,'markersize',5,'marker','diamond');
+    robot.traceData = [robot.traceData,[x;y]];
+    set(robot.body,'xdata',x,'ydata',y,'markersize',7,'marker','diamond');
     R = [ cos(theta), -sin(theta);
           sin(theta), cos(theta)];
     coor = [0 0.2 0.4 0.8 1; 0 0 0 0 0];
     coor = R * coor + [x;y];
-    set(robot.heading,'xdata',coor(1,:),'ydata',coor(2,:),'markersize',2);
+    set(robot.heading,'xdata',coor(1,:),'ydata',coor(2,:),'markersize',2,'color','y');
+    set(robot.trace,'xdata',robot.traceData(1,:),'ydata',robot.traceData(2,:),'color','b');
 end
     
