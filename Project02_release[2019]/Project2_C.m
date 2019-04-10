@@ -35,9 +35,11 @@ landmark.handle = plot(0,0,'linestyle','none');
 landmark.text = text(0,0,'');
 landmark.DA = text(zeros(1,5),zeros(1,5),'');
 %% Creating robot body
-robot = [];
+global robot;
 robot.body = plot(0,0);
 robot.heading = plot(0,0);
+robot.trace = plot(0,0);
+robot.traceData = [];
 %%
 zoom on; grid on;
 uicontrol('Style','pushbutton','String','Pause/Cont.','Position',[10,1,80,20],'Callback',{@PushButtonCallBack,1});
@@ -49,7 +51,7 @@ for i=1:N
     ProcessScan(scan_i,myHandle,x(i),y(i),theta(i));    %this function does everything
     s=sprintf('Showing scan #[%d]/[%d]\r',i,N);
     set(myHandle.handle3,'string',s);
-    plotRobot(robot,x(i),y(i),theta(i));
+    plotRobot(x(i),y(i),theta(i));
     
     pause(0.01) ;                   % 10hz refresh rate
     
@@ -263,12 +265,15 @@ function IdentifyOOIs(r)
     end
 end
 
-function plotRobot(robot,x,y,theta)
+function plotRobot(x,y,theta)
+    global robot;
+    robot.traceData = [robot.traceData,[x;y]];
     set(robot.body,'xdata',x,'ydata',y,'markersize',5,'marker','diamond');
     R = [ cos(theta), -sin(theta);
           sin(theta), cos(theta)];
     coor = [0 0.2 0.4 0.8 1; 0 0 0 0 0];
     coor = R * coor + [x;y];
-    set(robot.heading,'xdata',coor(1,:),'ydata',coor(2,:),'markersize',2);
+    set(robot.heading,'xdata',coor(1,:),'ydata',coor(2,:),'markersize',2,'color','y');
+    set(robot.trace,'xdata',robot.traceData(1,:),'ydata',robot.traceData(2,:),'color','b');
 end
     
