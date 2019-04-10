@@ -48,11 +48,27 @@ end
 % convert from radian to degree
 thetaK = thetaK * 180/pi;
 thetaKL = thetaKL * 180/pi;
-figure();
+figure(1); clf;
 plot(time,thetaK);
-figure();
+xlabel('time');
+xlabel('yaw');
+figure(2);clf;
 plot(xK,yK);
-figure();
+xlabel('time');
+xlabel('y(m)');
+figure(3);clf;
 plot(Laser_time,thetaKL);
-figure();
+xlabel('time');
+xlabel('yaw');
+figure(4);clf;
 plot(xKL,yKL);
+xlabel('x(m)');
+xlabel('y(m)');
+figure(5);clf;
+plot(time,Vel.speeds);
+xlabel('time');
+ylabel('speed')
+figure(6);clf;
+plot(time,yaw);
+xlabel('time');
+ylabel('yaw');
