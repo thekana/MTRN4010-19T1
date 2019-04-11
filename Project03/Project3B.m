@@ -89,7 +89,7 @@ stdDevSpeed = 0.15 ;   % We simulate a lot of error!  (very difficult case).
 sdev_rangeMeasurement = 0.25 ;          % std. of noise in range measurements. 0.25m
 sdev_angleMeasurement = 0.03;            %<<< added this sDev arbitary value
 
-bias = 1*pi/180;        %bias of the sensor
+bias = 3*pi/180;        %bias of the sensor
 % .....................................................
 
 % some parameters, for the simulation context.
@@ -124,7 +124,7 @@ P_u = diag([stdDevSpeed^2,stdDevGyro^2]);   %input of the model are still 2 plat
 Xdr = [ 0; 0;pi/2;0 ] ;
 
 % Some buffers to store the intermediate values during the experiment (so we can plot them, later)
-Xreal_History= zeros(4,Li) ;
+Xreal_History= zeros(3,Li) ;
 Xe_History= zeros(4,Li) ;
 XeDR_History= zeros(4,Li) ;
 
@@ -295,7 +295,10 @@ function Xnext=RunProcessModel(X,speed,GyroZ,dt)
     %<<<modified the process model and remove bias every iteration
     Xnext = X + dt*[ speed*cos(X(3)) ;  speed*sin(X(3)) ; GyroZ-X(4);0]; %+ noise;
 return ;
-
+function Xnext=RunProcessModelReal(X,speed,GyroZ,dt) 
+    %<<<modified the process model and remove bias every iteration
+    Xnext = X + dt*[ speed*cos(X(3)) ;  speed*sin(X(3)) ; GyroZ]; %+ noise;
+return ;
 
 % =========================================================================
 % ========== Simulation functions - (used for simulation of "real" platform and
@@ -325,7 +328,7 @@ return ;
 function [speed,GyroZ] = SimuControl(X,t)
     speed = 2 ;                                         % cruise speed, 2m/s  ( v ~ 7km/h)
     %<<also added bias to gyro
-    GyroZ = 3*pi/180 + sin(0.1*2*pi*t/50)*.02+X(4); %+ 1*pi/180;         % some crazy driver moving the steering wheel...
+    GyroZ = 3*pi/180 + sin(0.1*2*pi*t/50)*.02; % some crazy driver moving the steering wheel...
 return ;
 
 
@@ -347,7 +350,7 @@ return ;
 
 function InitSimulation(stdDevSpeed,stdDevGyro,sdev_rangeMeasurement,DtObservations,sdev_angleMeasurement,bias)
     global ContextSimulation;
-    ContextSimulation.Xreal = [ 0; 0;pi/2;bias] ;     % [x;y;phi;bias]
+    ContextSimulation.Xreal = [ 0; 0;pi/2] ;     % [x;y;phi]
     ContextSimulation.stdDevSpeed = stdDevSpeed;
     ContextSimulation.stdDevGyro = stdDevGyro;
     ContextSimulation.speed=0;
@@ -367,7 +370,7 @@ function [Noisy_speed,Noisy_GyroZ]=GetProcessModelInputs()
     % noise to the perfect measurements (the ones I get from the simulated "real" platform.
     global ContextSimulation;
     Noisy_speed =ContextSimulation.speed+ContextSimulation.stdDevSpeed*randn(1) ;
-    Noisy_GyroZ =ContextSimulation.GyroZ+ContextSimulation.stdDevGyro*randn(1);
+    Noisy_GyroZ =ContextSimulation.GyroZ+ContextSimulation.stdDevGyro*randn(1)+3*pi/180;
 return;
 
 
@@ -384,7 +387,7 @@ function  SimuPlatform(time,Dt)
     [ContextSimulation.speed,ContextSimulation.GyroZ] = SimuControl(ContextSimulation.Xreal,time) ;      % read kinematic model inputs, ideal ones
     % .........................................
     % simulate one step of the "real system":  Xreal(time)
-    ContextSimulation.Xreal = RunProcessModel(ContextSimulation.Xreal,ContextSimulation.speed,ContextSimulation.GyroZ,Dt) ;
+    ContextSimulation.Xreal = RunProcessModelReal(ContextSimulation.Xreal,ContextSimulation.speed,ContextSimulation.GyroZ,Dt) ;
     ContextSimulation.CurrSimulatedTime = ContextSimulation.CurrSimulatedTime+Dt;
 return;
 
