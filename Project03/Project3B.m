@@ -89,7 +89,8 @@ stdDevSpeed = 0.15 ;   % We simulate a lot of error!  (very difficult case).
 sdev_rangeMeasurement = 0.25 ;          % std. of noise in range measurements. 0.25m
 sdev_angleMeasurement = 0.03;            %<<< added this sDev arbitary value
 
-bias = 3*pi/180;        %bias of the sensor
+global bias
+bias = 1*pi/180;        %bias of the sensor
 % .....................................................
 
 % some parameters, for the simulation context.
@@ -143,7 +144,7 @@ Q1 = diag( [ (0.01)^2 ,(0.01)^2 , (1*pi/180)^2,0]) ; %<<< assume bias constant Q
 
 time=0 ;
 % initialize the simulator of process (the "real system").
-InitSimulation(stdDevSpeed,stdDevGyro,sdev_rangeMeasurement,DtObservations,sdev_angleMeasurement,bias);
+InitSimulation(stdDevSpeed,stdDevGyro,sdev_rangeMeasurement,DtObservations,sdev_angleMeasurement);
 % (BTW: this is just a simulation to replace the real system, because we,
 % for the moment, do not have the real system. )
 
@@ -348,7 +349,7 @@ return ;
 
 
 
-function InitSimulation(stdDevSpeed,stdDevGyro,sdev_rangeMeasurement,DtObservations,sdev_angleMeasurement,bias)
+function InitSimulation(stdDevSpeed,stdDevGyro,sdev_rangeMeasurement,DtObservations,sdev_angleMeasurement)
     global ContextSimulation;
     ContextSimulation.Xreal = [ 0; 0;pi/2] ;     % [x;y;phi]
     ContextSimulation.stdDevSpeed = stdDevSpeed;
@@ -368,9 +369,10 @@ function [Noisy_speed,Noisy_GyroZ]=GetProcessModelInputs()
     % add noise to simulate real conditions
     % WHY? to be realistic. When we measure things the measurements are polluted with noise, So I simulated that situation by adding random
     % noise to the perfect measurements (the ones I get from the simulated "real" platform.
+    global bias;
     global ContextSimulation;
     Noisy_speed =ContextSimulation.speed+ContextSimulation.stdDevSpeed*randn(1) ;
-    Noisy_GyroZ =ContextSimulation.GyroZ+ContextSimulation.stdDevGyro*randn(1)+3*pi/180;
+    Noisy_GyroZ =ContextSimulation.GyroZ+ContextSimulation.stdDevGyro*randn(1)+bias;
 return;
 
 
@@ -448,7 +450,8 @@ function [nDetectedLandmarks,MeasuredRanges,MeasuredAngles,IDs]=GetObservationMe
 function SomePlots(Xreal_History,Xe_History,Xdr_History,map) ;
 
 
-
+global bias
+line = bias * 180/pi;
 figure(2) ; clf ; hold on ;
 plot(Xreal_History(1,:),Xreal_History(2,:),'b') ;
 plot(Xe_History(1,:),Xe_History(2,:),'r') ;
@@ -497,7 +500,7 @@ subplot(313) ; plot(180/pi*(Xreal_History(3,:)-Xe(3,:))) ;ylabel('heading error 
 figure(5); clf;
 plot(Xe_History(4,:).*180/pi);
 hold on;
-plot(linspace(0,5000),ones(length(linspace(0,5000)))*1);    %plot line here
+plot(linspace(0,5000),ones(length(linspace(0,5000)))*line);    %plot line here
 Xe=[];
 
 return ;
