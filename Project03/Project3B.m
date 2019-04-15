@@ -90,7 +90,7 @@ sdev_rangeMeasurement = 0.25 ;          % std. of noise in range measurements. 0
 sdev_angleMeasurement = 0.03;            %<<< added this sDev arbitary value
 
 global bias
-bias = 1*pi/180;        %bias of the sensor
+bias = 4*pi/180;        %bias of the sensor
 % .....................................................
 
 % some parameters, for the simulation context.

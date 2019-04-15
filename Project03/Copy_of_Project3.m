@@ -83,13 +83,13 @@ for i = 2:length(time)-1
     %% Process scan when there is laser data
     if (current_scan <= length(Laser_time) && Laser_time(current_scan) - time(i)< dt)
         % Get X,Y to process scans and transform OOIs
-        dtL = Laser_time(current_scan) - time(i-1);
+        dtL = Laser_time (current_scan) - time(i-1);
         
         Xtemp = processModel(imuGyro,speed,dtL,Xe);
         
         Local_OOIs = ProcessScan(dataL.Scans(:,current_scan));
         Global_OOIs = ToGlobalCoordinateFrame(Local_OOIs,Xtemp(1),Xtemp(2),Xtemp(3)); % convert OOIs to global coor
-        %PlotOOIs(Global_OOIs); %Will plot only bright points
+        PlotOOIs(Global_OOIs); %Will plot only bright points
         DataAssociation(Global_OOIs,Local_OOIs); % identify landmark && data association
         detectedOOIs = landmark.detected;
         current_scan = current_scan + 1;
@@ -119,7 +119,7 @@ for i = 2:length(time)-1
             eMY = (landmark.localOOIs(2,u));
             eMD = sqrt( eMX*eMX + eMY*eMY );
             MeasuredRange = eMD;
-            MeasuredAngle = atan2(eMY,eMX) - Xe(3) + pi/2;
+            MeasuredAngle = atan2(eMY,eMX);
             z = [MeasuredRange-ExpectedRange;
                 wrapToPi(MeasuredAngle-ExpectedAngle)];
             R = diag([stdRangeMeasure^2*4 stdBearingMeasure^2*4]);
@@ -133,13 +133,13 @@ for i = 2:length(time)-1
         end
     end
     Xehistory(:,i) = Xe;
-    %disp(Xe(1));
-    %disp(Xe(2));
-    %while (CCC.flagPause), pause(0.15); end
-    %s=sprintf('Showing scan #[%d]/[%d]\r',i,length(time));
-    %set(myHandle.handle3,'string',s);
-    %plotRobot(Xe(1),Xe(2),Xe(3));
-    %pause(0.01) ;                   % 10hz refresh rate
+%     disp(Xe(1));
+%     disp(Xe(2));
+%     while (CCC.flagPause), pause(0.15); end
+%     s=sprintf('Showing scan #[%d]/[%d]\r',i,length(time));
+%     set(myHandle.handle3,'string',s);
+%     plotRobot(Xe(1),Xe(2),Xe(3));
+%     pause(0.01) ;                   % 10hz refresh rate
 end
     hold on;
     plot(Xehistory(1,:),Xehistory(2,:));
@@ -149,7 +149,7 @@ end
     
 function Xnext = processModel(omega,speed,dt,Xprev)
     
-    Xnext = zeros(3,1);
+    Xnext = zeros(3,1); 
     Xnext(1) = Xprev(1) + speed*cos(Xprev(3))*dt;
     Xnext(2) = Xprev(2) + speed*sin(Xprev(3))*dt;
     Xnext(3) = Xprev(3) + omega*dt;  
@@ -280,7 +280,7 @@ function DataAssociation(r,rLocal)
     DA = []; %data association
     Measured = [];
     landmark.detected = 0;
-    if isempty(landmark.coor)
+    if isempty(lanodmark.cor)
         % add all ooi and give unique id
         landmark.coor = OOIglobal;
         landmark.id = 1:length(landmark.coor);
