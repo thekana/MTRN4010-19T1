@@ -28,6 +28,7 @@ global myHandle;
 myHandle.handle3 = title('');
 myHandle.handle4 = plot(0,0);       %handle for reflective OOIs
 myHandle.handle5 = plot(0,0);       %handle for non-reflective OOIs
+myHandle.handle6 = plot(0,0);       %for DR
 myHandle.real = plot(0,0);
 %% Creating landmark and currently detected OOIs graphic handles
 landmark.handle = plot(0,0,'linestyle','none');
@@ -68,7 +69,9 @@ L = length(yawC);
 
 % buffer for variables temp 40K length
 Xehistory = zeros(3,L);
+Xdrhistory = zeros(3,L);
 Xe =  [0;0;pi/2];
+Xdr = [0;0;pi/2];
 % buffer for what we actually care about
 Ltime = length(Laser_time);
 
@@ -80,10 +83,12 @@ for i = 2:length(time)-1
     imuGyro = yawC(i);
     speed = Vel.speeds(i);
     detectedOOIs = 0;
+    
+    Xdr = processModel(imuGyro,speed,dt,Xdr);
     %% Process scan when there is laser data
     if (current_scan <= length(Laser_time) && Laser_time(current_scan) - time(i)< dt)
         % Get X,Y to process scans and transform OOIs
-        dtL = Laser_time (current_scan) - time(i-1);
+        dtL = Laser_time(current_scan) - time(i-1);
         
         Xtemp = processModel(imuGyro,speed,dtL,Xe);
         
@@ -133,16 +138,18 @@ for i = 2:length(time)-1
         end
     end
     Xehistory(:,i) = Xe;
-%     disp(Xe(1));
-%     disp(Xe(2));
-%     while (CCC.flagPause), pause(0.15); end
-%     s=sprintf('Showing scan #[%d]/[%d]\r',i,length(time));
-%     set(myHandle.handle3,'string',s);
-%     plotRobot(Xe(1),Xe(2),Xe(3));
-%     pause(0.01) ;                   % 10hz refresh rate
+    Xdrhistory(:,i) = Xdr;
+    disp(Xe(1));
+    disp(Xe(2));
+    while (CCC.flagPause), pause(0.15); end
+    s=sprintf('Showing scan #[%d]/[%d]\r',i,length(time));
+    set(myHandle.handle3,'string',s);
+    set(myHandle.handle6,'xdata',Xdrhistory(1,:),'ydata',Xdrhistory(2,:),'LineStyle','none','marker','.');
+    plotRobot(Xe(1),Xe(2),Xe(3));
+    pause(0.01) ;                   % 10hz refresh rate
 end
-    hold on;
-    plot(Xehistory(1,:),Xehistory(2,:));
+    % hold on;
+    % plot(Xehistory(1,:),Xehistory(2,:));
     % convert from radian to degree
     % thetaK = thetaK * 180/pi;
     % thetaKL = thetaKL * 180/pi;
@@ -280,7 +287,7 @@ function DataAssociation(r,rLocal)
     DA = []; %data association
     Measured = [];
     landmark.detected = 0;
-    if isempty(lanodmark.cor)
+    if isempty(landmark.coor)
         % add all ooi and give unique id
         landmark.coor = OOIglobal;
         landmark.id = 1:length(landmark.coor);
