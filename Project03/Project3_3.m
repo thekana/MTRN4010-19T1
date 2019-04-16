@@ -21,7 +21,7 @@ N = dataL.N;                        %number of scans in this squence.
 figure('visible','on');
 clf();
 hold on;
-axis([-5,5,0,10]);                %focuses plot on this region ( of interest in L220)
+axis([-5,3,-1,7]);                %focuses plot on this region ( of interest in L220)
 xlabel('x (meters)');
 ylabel('y (meters)');
 global myHandle;
@@ -76,6 +76,14 @@ Xdr = [0;0;pi/2];
 Ltime = length(Laser_time);
 
 current_scan = 1;
+
+for i = 2:length(time)-1
+    dt = time(i)-time(i-1); % find dt
+    imuGyro = yawC(i);
+    speed = Vel.speeds(i);
+    Xdr = processModel(imuGyro,speed,dt,Xdr);
+    Xdrhistory(:,i) = Xdr;
+end
 
 % must obtain the robot position and heading at the time scan[i]
 for i = 2:length(time)-1
@@ -134,17 +142,13 @@ for i = 2:length(time)-1
             K = P*H'*iS;
             Xe = Xe+K*z;
             P = P-K*H*P;
-
         end
     end
     Xehistory(:,i) = Xe;
-    Xdrhistory(:,i) = Xdr;
-    disp(Xe(1));
-    disp(Xe(2));
     while (CCC.flagPause), pause(0.15); end
-    s=sprintf('Showing scan #[%d]/[%d]\r',i,length(time));
+    s=sprintf('Showing scan #[%d]/[%d]\r',i+1,length(time));
     set(myHandle.handle3,'string',s);
-    set(myHandle.handle6,'xdata',Xdrhistory(1,:),'ydata',Xdrhistory(2,:),'LineStyle','none','marker','.');
+    set(myHandle.handle6,'xdata',Xdrhistory(1,1:i),'ydata',Xdrhistory(2,1:i),'LineStyle','none','marker','.');
     plotRobot(Xe(1),Xe(2),Xe(3));
     pause(0.01) ;                   % 10hz refresh rate
 end
@@ -330,7 +334,7 @@ function plotRobot(x,y,theta)
           sin(theta), cos(theta)];
     coor = [0 0.2 0.4 0.8 1; 0 0 0 0 0];
     coor = R * coor + [x;y];
-    set(robot.heading,'xdata',coor(1,:),'ydata',coor(2,:),'markersize',2,'color','y');
+    set(robot.heading,'xdata',coor(1,:),'ydata',coor(2,:),'markersize',2,'color','k');
     set(robot.trace,'xdata',robot.traceData(1,:),'ydata',robot.traceData(2,:),'color','b');
 end
     

@@ -21,7 +21,7 @@ N = dataL.N;                        %number of scans in this squence.
 figure('visible','on');
 clf();
 hold on;
-axis([-5,5,0,10]);                %focuses plot on this region ( of interest in L220)
+axis([-5,3,-1,7]);                %focuses plot on this region ( of interest in L220)
 xlabel('x (meters)');
 ylabel('y (meters)');
 global myHandle;
@@ -50,11 +50,14 @@ stdDevGyro = 1.4;
 stdDevSpeed = 0.4;
 stdRangeMeasure = 0.16;
 stdBearingMeasure = 1.1;
+max_acceleration = 1.5;
 
+b = 1*pi/180; %between -2,2
 %%Matrices
-P = zeros(3,3);
-Pu = diag([stdDevSpeed^2,stdDevGyro^2]);
-Q1 = diag([ (0.01)^2 ,(0.01)^2 , (1*pi/180)^2]);
+P = zeros(5,5);
+P(4,4) = b^2;
+Pu = diag(stdDevGyro^2);
+
 %%remove bias
 time = double(IMU.times-IMU.times(1))/10000;
 Laser_time = double(dataL.times-dataL.times(1))/10000;
@@ -64,33 +67,39 @@ yaw = -IMU.DATAf(6,:); % negate w(K)
 horizon0 = length(find(time<20)); %stationary for 20 secs
 Bias = mean(yaw(1:horizon0)); %Bias
 
-yawC = yaw - Bias; % w(K) corrected
+yawC = yaw;
 L = length(yawC);
 
 % buffer for variables temp 40K length
-Xehistory = zeros(3,L);
+Xehistory = zeros(5,L);
 Xdrhistory = zeros(3,L);
-Xe =  [0;0;pi/2];
+Xe =  [0;0;pi/2;0;0];
 Xdr = [0;0;pi/2];
 % buffer for what we actually care about
 Ltime = length(Laser_time);
 
 current_scan = 1;
 
+for i = 2:length(time)-1
+    dt = time(i)-time(i-1); % find dt
+    imuGyro = yawC(i)-Bias;
+    speed = Vel.speeds(i);
+    Xdr = processModelDR(imuGyro,speed,dt,Xdr);
+    Xdrhistory(:,i) = Xdr;
+end
 % must obtain the robot position and heading at the time scan[i]
 for i = 2:length(time)-1
     dt = time(i)-time(i-1); % find dt
     imuGyro = yawC(i);
     speed = Vel.speeds(i);
     detectedOOIs = 0;
-    
-    Xdr = processModel(imuGyro,speed,dt,Xdr);
+    Q1 = diag([ (0.01)^2 ,(0.01)^2 , (1*pi/180)^2,0,(dt*max_acceleration)^2]); %5x
     %% Process scan when there is laser data
     if (current_scan <= length(Laser_time) && Laser_time(current_scan) - time(i)< dt)
         % Get X,Y to process scans and transform OOIs
         dtL = Laser_time(current_scan) - time(i-1);
         
-        Xtemp = processModel(imuGyro,speed,dtL,Xe);
+        Xtemp = processModel(imuGyro,dtL,Xe);
         
         Local_OOIs = ProcessScan(dataL.Scans(:,current_scan));
         Global_OOIs = ToGlobalCoordinateFrame(Local_OOIs,Xtemp(1),Xtemp(2),Xtemp(3)); % convert OOIs to global coor
@@ -100,11 +109,11 @@ for i = 2:length(time)-1
         current_scan = current_scan + 1;
     end
     
-    J = [ [1,0,-dt*speed*sin(Xe(3))] ; [0,1,dt*speed*cos(Xe(3))];[ 0,0,1]]; %3x3 jacobian
-    Ju = [dt*cos(Xe(3)),0;dt*sin(Xe(3)),0;0,dt]; %3x2 linear transformation of input
+    J = [ [1,0,-dt*Xe(5)*sin(Xe(3)),0,dt*cos(Xe(3))] ; [0,1,dt*Xe(5)*cos(Xe(3)),0,dt*sin(Xe(3))];[ 0,0,1,-dt,0];[0,0,0,1,0];[0,0,0,0,1]]; %3x3 jacobian
+    Ju = [0;0;dt;0;0]; %5x1 linear transformation of the input which is now only gyro
     Q = Ju*Pu*Ju'+Q1;
     P = J*P*J'+Q ;
-    Xe = processModel(imuGyro,speed,dt,Xe);
+    Xe = processModel(imuGyro,dt,Xe);
     
     if(detectedOOIs >0)
         %EKF parts
@@ -115,8 +124,8 @@ for i = 2:length(time)-1
             eDX = (landmark.coor(1,ID)-Xe(1)-d*cos(Xe(3)));
             eDY = (landmark.coor(2,ID)-Xe(2)-d*sin(Xe(3)));
             eDD = sqrt( eDX*eDX + eDY*eDY );
-            H = [  -eDX/eDD , -eDY/eDD , 0;
-                eDY/eDD^2, -eDX/eDD^2, -1]; 
+            H = [  -eDX/eDD , -eDY/eDD , 0,0,0; %2x5
+                eDY/eDD^2, -eDX/eDD^2, -1,0,0]; 
             ExpectedRange = eDD;
             ExpectedAngle = atan2(eDY,eDX) - Xe(3) + pi/2;
             
@@ -138,13 +147,10 @@ for i = 2:length(time)-1
         end
     end
     Xehistory(:,i) = Xe;
-    Xdrhistory(:,i) = Xdr;
-    disp(Xe(1));
-    disp(Xe(2));
     while (CCC.flagPause), pause(0.15); end
-    s=sprintf('Showing scan #[%d]/[%d]\r',i,length(time));
+    s=sprintf('Showing scan #[%d]/[%d]\tEstimated Bias[%f] Velocity[%f]\r',i+1,length(time),Xe(4),Xe(5));
     set(myHandle.handle3,'string',s);
-    set(myHandle.handle6,'xdata',Xdrhistory(1,:),'ydata',Xdrhistory(2,:),'LineStyle','none','marker','.');
+    set(myHandle.handle6,'xdata',Xdrhistory(1,1:i),'ydata',Xdrhistory(2,1:i),'LineStyle','none','marker','.');
     plotRobot(Xe(1),Xe(2),Xe(3));
     pause(0.01) ;                   % 10hz refresh rate
 end
@@ -154,7 +160,17 @@ end
     % thetaK = thetaK * 180/pi;
     % thetaKL = thetaKL * 180/pi;
     
-function Xnext = processModel(omega,speed,dt,Xprev)
+function Xnext = processModel(omega,dt,Xprev)
+    
+    Xnext = zeros(5,1); 
+    Xnext(1) = Xprev(1) + Xprev(5)*cos(Xprev(3))*dt;
+    Xnext(2) = Xprev(2) + Xprev(5)*sin(Xprev(3))*dt;
+    Xnext(3) = Xprev(3) + dt*(omega-Xprev(4));
+    Xnext(4) = Xprev(4) + 0;
+    Xnext(5) = Xprev(5) + 0;
+end
+
+function Xnext = processModelDR(omega,speed,dt,Xprev)
     
     Xnext = zeros(3,1); 
     Xnext(1) = Xprev(1) + speed*cos(Xprev(3))*dt;
@@ -330,7 +346,7 @@ function plotRobot(x,y,theta)
           sin(theta), cos(theta)];
     coor = [0 0.2 0.4 0.8 1; 0 0 0 0 0];
     coor = R * coor + [x;y];
-    set(robot.heading,'xdata',coor(1,:),'ydata',coor(2,:),'markersize',2,'color','y');
+    set(robot.heading,'xdata',coor(1,:),'ydata',coor(2,:),'markersize',2,'color','k');
     set(robot.trace,'xdata',robot.traceData(1,:),'ydata',robot.traceData(2,:),'color','b');
 end
     
