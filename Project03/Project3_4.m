@@ -57,7 +57,7 @@ P = zeros(4,4);
 P(4,4) = b^2;%(4*pi/180)^2;
 Pu = diag([stdDevSpeed^2,stdDevGyro^2]);
 Q1 = diag([ (0.01)^2 ,(0.01)^2 , (2*pi/180)^2,0]);
-%%remove bias
+
 time = double(IMU.times-IMU.times(1))/10000;
 Laser_time = double(dataL.times-dataL.times(1))/10000;
 
@@ -110,8 +110,8 @@ for i = 2:length(time)-1
         current_scan = current_scan + 1;
     end
     
-    J = [ [1,0,-dt*speed*sin(Xe(3)),0] ; [0,1,dt*speed*cos(Xe(3)),0];[ 0,0,1,-dt];[0,0,0,1]]; %3x3 jacobian
-    Ju = [dt*cos(Xe(3)),0;dt*sin(Xe(3)),0;0,dt;0,0]; %3x2 linear transformation of input
+    J = [ [1,0,-dt*speed*sin(Xe(3)),0] ; [0,1,dt*speed*cos(Xe(3)),0];[ 0,0,1,-dt];[0,0,0,1]]; %4x4 jacobian
+    Ju = [dt*cos(Xe(3)),0;dt*sin(Xe(3)),0;0,dt;0,0]; %4x2 linear transformation of input
     Q = Ju*Pu*Ju'+Q1;
     P = J*P*J'+Q ;
     Xe = processModel(imuGyro,speed,dt,Xe);
@@ -156,11 +156,7 @@ for i = 2:length(time)-1
     pause(0.0001) ;                   % 10hz refresh rate
     %toc
 end
-    % hold on;
-    % plot(Xehistory(1,:),Xehistory(2,:));
-    % convert from radian to degree
-    % thetaK = thetaK * 180/pi;
-    % thetaKL = thetaKL * 180/pi;
+
     figure()
     plot(time(1:length(time)-1),Xehistory(4,1:length(time)-1));
     axis([0,250,0,0.02]);

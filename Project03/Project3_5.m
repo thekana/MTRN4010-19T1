@@ -58,7 +58,6 @@ P = zeros(5,5);
 P(4,4) = b^2;
 Pu = diag(stdDevGyro^2);
 
-%%remove bias
 time = double(IMU.times-IMU.times(1))/10000;
 Laser_time = double(dataL.times-dataL.times(1))/10000;
 
@@ -91,7 +90,6 @@ end
 for i = 2:length(time)-1
     dt = time(i)-time(i-1); % find dt
     imuGyro = yawC(i);
-    %speed = Vel.speeds(i);
     detectedOOIs = 0;
     Q1 = diag([ (0.01)^2 ,(0.01)^2 , (1*pi/180)^2,0,(dt*max_acceleration)^2]); %5x
     %% Process scan when there is laser data
@@ -109,7 +107,7 @@ for i = 2:length(time)-1
         current_scan = current_scan + 1;
     end
     
-    J = [ [1,0,-dt*Xe(5)*sin(Xe(3)),0,dt*cos(Xe(3))] ; [0,1,dt*Xe(5)*cos(Xe(3)),0,dt*sin(Xe(3))];[ 0,0,1,-dt,0];[0,0,0,1,0];[0,0,0,0,1]]; %3x3 jacobian
+    J = [ [1,0,-dt*Xe(5)*sin(Xe(3)),0,dt*cos(Xe(3))] ; [0,1,dt*Xe(5)*cos(Xe(3)),0,dt*sin(Xe(3))];[ 0,0,1,-dt,0];[0,0,0,1,0];[0,0,0,0,1]]; %5x5 jacobian
     Ju = [0;0;dt;0;0]; %5x1 linear transformation of the input which is now only gyro
     Q = Ju*Pu*Ju'+Q1;
     P = J*P*J'+Q ;
@@ -133,7 +131,7 @@ for i = 2:length(time)-1
             eMY = (landmark.localOOIs(2,u));
             eMD = sqrt( eMX*eMX + eMY*eMY );
             MeasuredRange = eMD;
-            MeasuredAngle = atan2(eMY,eMX);
+            MeasuredAngle = atan2(eMY,eMX); 
             z = [MeasuredRange-ExpectedRange;
                 wrapToPi(MeasuredAngle-ExpectedAngle)];
             R = diag([stdRangeMeasure^2*4 stdBearingMeasure^2*4]);
@@ -154,11 +152,6 @@ for i = 2:length(time)-1
     plotRobot(Xe(1),Xe(2),Xe(3));
     pause(0.00001) ;                   % 10hz refresh rate
 end
-    % hold on;
-    % plot(Xehistory(1,:),Xehistory(2,:));
-    % convert from radian to degree
-    % thetaK = thetaK * 180/pi;
-    % thetaKL = thetaKL * 180/pi;
     figure()
     plot(time(1:length(time)-1),Xehistory(4,1:length(time)-1));
     axis([0,250,0,0.02]);
