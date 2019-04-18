@@ -52,7 +52,7 @@ stdRangeMeasure = 0.16;
 stdBearingMeasure = 1.1;
 max_acceleration = 1.5;
 
-b = 1*pi/180; %between -2,2
+b = 100*pi/180; %between -2,2
 %%Matrices
 P = zeros(5,5);
 P(4,4) = b^2;
@@ -91,7 +91,7 @@ end
 for i = 2:length(time)-1
     dt = time(i)-time(i-1); % find dt
     imuGyro = yawC(i);
-    speed = Vel.speeds(i);
+    %speed = Vel.speeds(i);
     detectedOOIs = 0;
     Q1 = diag([ (0.01)^2 ,(0.01)^2 , (1*pi/180)^2,0,(dt*max_acceleration)^2]); %5x
     %% Process scan when there is laser data
@@ -161,7 +161,11 @@ end
     % thetaKL = thetaKL * 180/pi;
     figure()
     plot(time(1:length(time)-1),Xehistory(4,1:length(time)-1));
-    
+    axis([0,250,0,0.02]);
+    figure()
+    plot(time(1:length(time)-1),Xehistory(5,1:length(time)-1));
+    hold on
+    plot(time,Vel.speeds)
 function Xnext = processModel(omega,dt,Xprev)
     
     Xnext = zeros(5,1); 
@@ -314,7 +318,7 @@ function DataAssociation(r,rLocal)
     for i = 1:n 
         for j = landmark.id
             distance = norm(OOIglobal(:,i)-landmark.coor(:,j));
-            if (distance <= 0.4)
+            if (distance <= 0.8)
                 temp = [OOIglobal(:,i);j];
                 DA = [DA,temp];
                 temp = [OOIlocal(:,i);j];

@@ -163,6 +163,7 @@ end
     % thetaKL = thetaKL * 180/pi;
     figure()
     plot(time(1:length(time)-1),Xehistory(4,1:length(time)-1));
+    axis([0,250,0,0.02]);
     
 function Xnext = processModel(omega,speed,dt,Xprev)
     
@@ -316,7 +317,7 @@ function DataAssociation(r,rLocal)
     for i = 1:n 
         for j = landmark.id
             distance = norm(OOIglobal(:,i)-landmark.coor(:,j));
-            if (distance <= 0.4)
+            if (distance <= 0.6)
                 temp = [OOIglobal(:,i);j];
                 DA = [DA,temp];
                 temp = [OOIlocal(:,i);j];
