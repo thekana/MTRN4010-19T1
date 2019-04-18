@@ -51,12 +51,12 @@ stdDevSpeed = 0.4;
 stdRangeMeasure = 0.16;
 stdBearingMeasure = 1.1;
 
-b = 1*pi/180; %between -2,2
-%%Matrices
+b = 100*pi/180; %between -2,2
+%%Maices
 P = zeros(4,4);
-P(4,4) = b^2;
+P(4,4) = b^2;%(4*pi/180)^2;
 Pu = diag([stdDevSpeed^2,stdDevGyro^2]);
-Q1 = diag([ (0.01)^2 ,(0.01)^2 , (1*pi/180)^2,0]);
+Q1 = diag([ (0.01)^2 ,(0.01)^2 , (2*pi/180)^2,0]);
 %%remove bias
 time = double(IMU.times-IMU.times(1))/10000;
 Laser_time = double(dataL.times-dataL.times(1))/10000;
@@ -89,7 +89,7 @@ end
 
 % must obtain the robot position and heading at the time scan[i]
 for i = 2:length(time)-1
-    tic
+    %tic
     dt = time(i)-time(i-1); % find dt
     imuGyro = yawC(i);
     speed = Vel.speeds(i);
@@ -153,14 +153,16 @@ for i = 2:length(time)-1
     set(myHandle.handle3,'string',s);
     set(myHandle.handle6,'xdata',Xdrhistory(1,1:i),'ydata',Xdrhistory(2,1:i),'LineStyle','none','marker','.');
     plotRobot(Xe(1),Xe(2),Xe(3));
-    pause(0.01) ;                   % 10hz refresh rate
-    toc
+    pause(0.0001) ;                   % 10hz refresh rate
+    %toc
 end
     % hold on;
     % plot(Xehistory(1,:),Xehistory(2,:));
     % convert from radian to degree
     % thetaK = thetaK * 180/pi;
     % thetaKL = thetaKL * 180/pi;
+    figure()
+    plot(time(1:length(time)-1),Xehistory(4,1:length(time)-1));
     
 function Xnext = processModel(omega,speed,dt,Xprev)
     

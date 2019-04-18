@@ -152,13 +152,15 @@ for i = 2:length(time)-1
     set(myHandle.handle3,'string',s);
     set(myHandle.handle6,'xdata',Xdrhistory(1,1:i),'ydata',Xdrhistory(2,1:i),'LineStyle','none','marker','.');
     plotRobot(Xe(1),Xe(2),Xe(3));
-    pause(0.01) ;                   % 10hz refresh rate
+    pause(0.00001) ;                   % 10hz refresh rate
 end
     % hold on;
     % plot(Xehistory(1,:),Xehistory(2,:));
     % convert from radian to degree
     % thetaK = thetaK * 180/pi;
     % thetaKL = thetaKL * 180/pi;
+    figure()
+    plot(time(1:length(time)-1),Xehistory(4,1:length(time)-1));
     
 function Xnext = processModel(omega,dt,Xprev)
     
