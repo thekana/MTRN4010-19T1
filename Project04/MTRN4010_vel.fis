@@ -1,0 +1,33 @@
+[System]
+Name='MTRN4010_vel'
+Type='mamdani'
+Version=2.0
+NumInputs=1
+NumOutputs=1
+NumRules=3
+AndMethod='min'
+OrMethod='max'
+ImpMethod='min'
+AggMethod='max'
+DefuzzMethod='mom'
+
+[Input1]
+Name='ds'
+Range=[0 20]
+NumMFs=3
+MF1='ZE':'trimf',[-Inf 0 4]
+MF2='PM':'trimf',[4 10 16]
+MF3='PB':'trimf',[10 20 200]
+
+[Output1]
+Name='vel'
+Range=[0 0.5]
+NumMFs=3
+MF1='ZE':'trimf',[0 0 0.2]
+MF2='PM':'trimf',[0.1 0.25 0.4]
+MF3='PB':'trimf',[0.3 0.5 0.5]
+
+[Rules]
+1, 1 (1) : 1
+2, 2 (1) : 1
+3, 3 (1) : 1
