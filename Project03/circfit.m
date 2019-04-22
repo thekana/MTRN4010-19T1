@@ -1,3 +1,7 @@
+%Author: Kanadech Jirapongtanavech, Z5176970
+
+%Function for performing circle fit
+
 % reference  = https://au.mathworks.com/matlabcentral/fileexchange/5557-circle-fit
 function   [xc,yc,R] = circfit(x,y)
 %
