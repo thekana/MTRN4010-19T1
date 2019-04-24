@@ -1,9 +1,10 @@
 global N_G N_C P_m P_c
 N_G = 5000; %Number of generations
 N_C = 300; %Population // Number of Chromosomes
-P_m = 0.5; %Probablity of mutation
+P_m = 0.01; %Probablity of mutation
 P_c = 0.5; %Probablity of crossover
 map = zeros(3,11);
+history = zeros(2,N_G);
 for i = 1:length(map)
    %Generate 11 landmarks with coordinates randomly distributed
    %in the interval of (-40,40)
@@ -31,16 +32,50 @@ for i = 1:N_G
     % Obtain Fitness score of every chromosome
     
     fitness = calcFitness(startPoint,endPoint,map,population);
+    history(:,i) = [N_G;max(fitness)];
     % disp(fitness);
     meanWeight = mean(fitness(:,2));
     fitnessScore = fitness(:,2)/meanWeight;
-    % find fitnessScore > 1
+    % remove fitnessScore < 1
+    population(fitnessScore<1,:) = [];
+    fitnessScore(fitnessScore<1) = [];
+    % selection completed
+    % Shuffle
+    population = population(randperm(size(population, 1)), :);
+    % Cross Over
+    populationSize = size(population,1);
+    for j = 1:populationSize-1
+        if rand()>P_c
+           crossOverPoint = randi([2,10],1,1);
+           parent1 = population(j,:);
+           parent2 = population(j+1,:);
+           child1 = [parent1(1:crossOverPoint),parent2(crossOverPoint+1:11)];
+           child2 = [parent2(1:crossOverPoint),parent1(crossOverPoint+1:11)];
+           population = [population;child1;child2];
+        end
+    end
+    % mutation
+    populationSize = size(population,1);
+    for j = 1:populationSize
+        if rand()>(1-P_m)
+            index1 = 0;
+            index2 = 0;
+            while index1 ~= index2
+               index1 = randi([1,11],1,1);
+               index2 = randi([1,11],1,1);
+            end
+        temp = population(j,index1);
+        population(j,index1) = population(j,index2);
+        population(j,index2) = temp;
+        end
+    end
+    % remove duplicate
 end
 
 function fitness = calcFitness(startP,endP,map,population)
-    global N_C
-    fitness = zeros(N_C,2);
-    for i=1:N_C
+
+    fitness = zeros(size(population,1),2);
+    for i=1:size(population,1)
         individual = population(i,:);
         distance = 0;
         distance = distance + norm(startP - map(2:3,individual(1))); %distance fromt start to first element
