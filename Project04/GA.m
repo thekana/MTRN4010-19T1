@@ -37,13 +37,13 @@ for i = 1:N_G
     meanWeight = mean(fitness(:,2));
     fitnessScore = fitness(:,2)/meanWeight;
     % remove fitnessScore < 1
-    population(fitnessScore<1,:) = [];
-    fitnessScore(fitnessScore<1) = [];
+    population(~(fitnessScore>1),:) = [];
+    fitnessScore(~(fitnessScore>1)) = [];
     % selection completed
     % Shuffle
     population = population(randperm(size(population, 1)), :);
     % Cross Over
-    populationSize = size(population,1);
+    populationSize = size(population,1)
     for j = 1:populationSize-1
         %disp(j);
         if rand()>P_c
