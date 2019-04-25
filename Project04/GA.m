@@ -1,8 +1,8 @@
 global N_G N_C P_m P_c
-N_G = 5000; %Number of generations
+N_G = 1000; %Number of generations
 N_C = 300; %Population // Number of Chromosomes
-P_m = 0.01; %Probablity of mutation
-P_c = 0.60; %Probablity of crossover
+P_m = 0.99; %Probablity of mutation
+P_c = 0.50; %Probablity of crossover
 map = zeros(3,11);
 history = zeros(2,N_G);
 for i = 1:length(map)
@@ -30,38 +30,44 @@ end
 
 for i = 1:N_G
     % Obtain Fitness score of every chromosome
-    
+    disp(i)
     fitness = calcFitness(startPoint,endPoint,map,population);
     history(:,i) = [i;min(fitness(:,1))];
     % disp(fitness);
     meanWeight = mean(fitness(:,2));
     fitnessScore = fitness(:,2)/meanWeight;
     % remove fitnessScore < 1
-    population(~(fitnessScore>1),:) = [];
-    fitnessScore(~(fitnessScore>1)) = [];
+    population(~(fitnessScore>(2.0/2.0)),:) = [];
+    fitnessScore(~(fitnessScore>(2.0/2.0))) = [];
     % selection completed
     % Shuffle
     population = population(randperm(size(population, 1)), :);
     % Cross Over
     populationSize = size(population,1)
-    for j = 1:populationSize-1
+    for j = 1:N_C
         %disp(j);
+        index1 = 0;
+        index2 = 0;
         if rand()>P_c
            crossOverPoint = randi([2,10],1,1);
-           parent1 = population(j,:);
-           parent2 = population(j+1,:);
-           child1 = [parent1(1:crossOverPoint),parent2(crossOverPoint+1:11)];
-           %child2 = [parent2(1:crossOverPoint),parent1(crossOverPoint+1:11)];
-           population = [population;child1];%;child2];
-           if size(population,1) == N_C
-               break;
+           while index1 == index2
+               index1 = randi([1,populationSize],1,1);
+               index2 = randi([1,populationSize],1,1);
            end
+           parent1 = population(index1,:);
+           parent2 = population(index2,:);
+           child1 = [parent2(1:crossOverPoint),parent1(crossOverPoint+1:11)];
+           child2 = [parent1(1:crossOverPoint),parent2(crossOverPoint+1:11)];
+           population = [population;child1;child2];
         end
+       if size(population,1) >= N_C
+           break;
+       end
     end
     % mutation
     populationSize = size(population,1);
     for j = 1:populationSize
-        if rand()>(1-P_m)
+        if rand()>(P_m)
             index1 = 0;
             index2 = 0;
             while index1 == index2
