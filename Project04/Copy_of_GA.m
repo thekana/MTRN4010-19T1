@@ -36,16 +36,15 @@ for i = 1:N_G
     % disp(fitness);
     meanWeight = mean(fitness(:,2));
     fitnessScore = fitness(:,2)/meanWeight;
-    populationtemp = population;
     % remove fitnessScore < 1
-    population(~(fitnessScore>(2.0/2.0)),:) = [];
-    fitnessScore(~(fitnessScore>(2.0/2.0))) = [];
-    
+    parents = population(fitnessScore>=1.0,:);
     % selection completed
     % Shuffle
-    population = population(randperm(size(population, 1)), :);
-    % Cross Over
-    populationSize = size(population,1)
+    parents = parents(randperm(size(parents, 1)), :);
+    
+    %% Cross Over
+    populationSize = size(population,1);
+    nextGen = [];
     for j = 1:N_C
         %disp(j);
         index1 = 0;
@@ -53,21 +52,21 @@ for i = 1:N_G
         if rand()>P_c
            crossOverPoint = randi([2,10],1,1);
            while index1 == index2
-               index1 = randi([1,populationSize],1,1);
-               index2 = randi([1,populationSize],1,1);
+               index1 = randi([1,size(parents,1)],1,1);
+               index2 = randi([1,size(parents,1)],1,1);
            end
-           parent1 = population(index1,:);
-           parent2 = population(index2,:);
+           parent1 = parents(index1,:);
+           parent2 = parents(index2,:);
            child1 = [parent2(1:crossOverPoint),parent1(crossOverPoint+1:11)];
            child2 = [parent1(1:crossOverPoint),parent2(crossOverPoint+1:11)];
-           population = [population;child1;child2];
+           nextGen = [nextGen;child1;child2];
         end
-       if size(population,1) >= N_C
-           break;
-       end
+%        if size(population,1) >= N_C
+%            break;
+%        end
     end
-    % mutation
-    populationSize = size(population,1);
+    %% mutation
+    populationSize = size(nextGen,1);
     for j = 1:populationSize
         if rand()>(P_m)
             index1 = 0;
@@ -76,22 +75,29 @@ for i = 1:N_G
                index1 = randi([1,11],1,1);
                index2 = randi([1,11],1,1);
             end
-            temp = population(j,index1);
-            population(j,index1) = population(j,index2);
-            population(j,index2) = temp;
+            temp = nextGen(j,index1);
+            nextGen(j,index1) = nextGen(j,index2);
+            nextGen(j,index2) = temp;
         end
         % remove duplicate
-        diff = setdiff(map(1,:),population(j,:));
+        diff = setdiff(map(1,:),nextGen(j,:));
         if diff
-            [~,ia,~] = unique(population(j,:),'first');     %unique indices
+            [~,ia,~] = unique(nextGen(j,:),'first');     %unique indices
             dupInd = setdiff(map(1,:),ia);                  %dup indices
             for k=1:length(dupInd)
-                population(j,dupInd(k)) = diff(k);
+                nextGen(j,dupInd(k)) = diff(k);
             end
         end
-        diff = setdiff(map(1,:),population(j,:));
+        diff = setdiff(map(1,:),nextGen(j,:));
         assert(isempty(diff));
     end
+    %% Elitism
+    if size(parents,1) < 10
+        nextGen = [nextGen;parents];
+    else
+        nextGen = [nextGen;parents(1:10,:)];
+    end
+    population = nextGen;
 end
 
 plot(history(1,:),history(2,:));
