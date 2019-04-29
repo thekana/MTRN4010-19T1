@@ -1,4 +1,4 @@
-function []=MTRN4010_01()
+function []=Project04_B()
 % sim car in random movement
 
 clc; clear all; close all; dbstop if error;
