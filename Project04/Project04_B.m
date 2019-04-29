@@ -9,12 +9,12 @@ time.dt=1; time.T=500;
 %% Initialization
 [fig]=FigureNew(field);
 
-carPosition = [rand*field.range,rand*field.range,rand*field.range];
+carPosition = [rand*field.range,rand*field.range,wrapToPi(rand*2*pi)];
 [car] = CarNew(carPosition,'r');
 [car] = CarNow(car,time,0,0);
 [car] = CarShow(car,0);
 
-targetHeading = rand*field.range;
+targetHeading = wrapToPi(rand*2*pi);
 
 targetPosition = [rand*field.range,rand*field.range,targetHeading];
 [target] = CarNew(targetPosition,'b');
