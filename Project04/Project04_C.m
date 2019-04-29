@@ -26,7 +26,7 @@ fis_ang=readfis('MTRN4010_ang.fis');
 %% PSO parameters
 
 PSO.DLB=0; PSO.DUB=30; %distance lower bound and upper bound
-PSO.D=1; PSO.G=20; PSO.N=20;% particle dimension generations, particles
+PSO.D=1; PSO.G=10; PSO.N=10;% particle dimension generations, particles
 PSO.V=rand(PSO.D,PSO.N);% initial PSO particle velocity
 PSO.Gbest=[]; PSO.gbest=realmax;% PSO gbest
 PSO.Pbest=[]; PSO.pbest=ones(1,PSO.N)*realmax;% PSO pbest
@@ -83,12 +83,6 @@ for g=1:PSO.G
     z=find(PSO.X(1,:)>PSO.BND(1,2));
     PSO.X(1,z)=PSO.BND(1,1)+rand(1,length(z))*diff(PSO.BND(1,:));
 end
-%% Error vs Generation graph
-figure();
-plot(1:PSO.G,history);
-xlabel('Generation');
-ylabel('Error');
-title('POS');
 
 %% Showing the optimized distance
 figure(fig);        % set to current axis
@@ -118,6 +112,12 @@ for t=0:time.dt:time.T
     [car]=CarShow(fig,car,t);
 end
 
+%% Error vs Generation graph
+figure();
+plot(1:PSO.G,history);
+xlabel('Generation');
+ylabel('Error');
+title('POS');
 end
 
 function [fig]=FigureNew(field)
