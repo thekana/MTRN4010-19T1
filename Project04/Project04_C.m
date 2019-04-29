@@ -26,7 +26,7 @@ fis_ang=readfis('MTRN4010_ang.fis');
 %% PSO parameters
 
 PSO.DLB=0; PSO.DUB=30; %distance lower bound and upper bound
-PSO.D=1; PSO.G=10; PSO.N=10;% particle dimension generations, particles
+PSO.D=1; PSO.G=20; PSO.N=20;% particle dimension generations, particles
 PSO.V=rand(PSO.D,PSO.N);% initial PSO particle velocity
 PSO.Gbest=[]; PSO.gbest=realmax;% PSO gbest
 PSO.Pbest=[]; PSO.pbest=ones(1,PSO.N)*realmax;% PSO pbest

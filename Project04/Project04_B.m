@@ -30,7 +30,8 @@ virtualPosition = [targetPosition(1)-d*cos(targetHeading),targetPosition(2)-d*si
 
 fis_vel=readfis('MTRN4010_vel_2.fis');
 fis_ang=readfis('MTRN4010_ang.fis');
-
+%fis_vel.DefuzzificationMethod = "centroid";
+%fis_ang.DefuzzificationMethod = "mom";
 %% Calculate the velocity at which the virtual target moves to real target
 
 virtualVel = calculateDistance(virtual,target)/time.T;
