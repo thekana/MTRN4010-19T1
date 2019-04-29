@@ -3,11 +3,11 @@ function []=Project04_C()
 
 clc; clear all; close all; dbstop if error;
 set(0,'defaultaxesfontname','times new roman');
-
 field.range=50;
 time.dt=1; time.T=500;
 %% Initialization
 
+[fig]=FigureNew(field);
 carPosition = [(rand-0.5)*field.range,(rand-0.5)*field.range,wrapToPi(rand*2*pi)];
 [car] = CarNew(carPosition,'r');
 [car] = CarNow(car,time,0,0);
@@ -26,7 +26,7 @@ fis_ang=readfis('MTRN4010_ang.fis');
 %% PSO parameters
 
 PSO.DLB=0; PSO.DUB=30; %distance lower bound and upper bound
-PSO.D=1; PSO.G=20; PSO.N=10;% particle dimension generations, particles
+PSO.D=1; PSO.G=1; PSO.N=3;% particle dimension generations, particles
 PSO.V=rand(PSO.D,PSO.N);% initial PSO particle velocity
 PSO.Gbest=[]; PSO.gbest=realmax;% PSO gbest
 PSO.Pbest=[]; PSO.pbest=ones(1,PSO.N)*realmax;% PSO pbest
@@ -84,16 +84,25 @@ for g=1:PSO.G
     PSO.X(1,z)=PSO.BND(1,1)+rand(1,length(z))*diff(PSO.BND(1,:));
     disp(PSO.X);
 end
+% figure(handle)
+% set(handle,'xdata',1:PSO.G,'ydata',history);
 figure();
 plot(1:PSO.G,history);
+xlabel('Generation');
+ylabel('Error');
+title('POS');
+
 %% Showing the optimized distance
-[fig]=FigureNew(field);
+[figNew]=FigureNew(field);
+[car] = CarNew(carPosition,'r');
+[car] = CarNow(car,time,0,0);
+[target] = CarNew(targetPosition,'b');
+[target] = CarNow(target,time,0,0);
 d = PSO.Gbest(1);
 virtualPosition = [targetPosition(1)-d*cos(targetHeading),targetPosition(2)-d*sin(targetHeading),targetHeading];
 [virtual] = CarNew(virtualPosition,'k');
 [virtual] = CarNow(virtual,time,0,0);
 [virtual] = CarShow(virtual,0);
-car = carInit;
 [car] = CarShow(car,0);
 [target] = CarShow(target,0);
 
