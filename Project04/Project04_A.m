@@ -4,11 +4,11 @@
 
 close all; clear; clc;
 global N_G N_C P_m P_c locNumber
-N_G = 2000; %Number of generations
+N_G = 1000; %Number of generations
 N_C = 300; %Population // Number of Chromosomes
-P_m = 0.80; %Probablity of mutation
+P_m = 0.99; %Probablity of mutation
 P_c = 0.50; %Probablity of crossover
-locNumber = 20; %number of locations
+locNumber = 11; %number of locations
 map = zeros(3,locNumber);
 history = zeros(2,N_G);
 for i = 1:length(map)
@@ -62,7 +62,7 @@ for i = 1:N_G
     nextGen = [];
     for j = 1:N_C
         if rand()>P_c
-           crossOverPoint = randi([2,10],1,1);
+           crossOverPoint = randi([2,locNumber-1],1,1);
            parent = randsample(length(probArray),2,true,probArray);
            parentA = population(parent(1),:);
            parentB = population(parent(2),:);
