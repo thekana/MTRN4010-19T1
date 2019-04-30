@@ -13,7 +13,7 @@ DefuzzMethod='mom'
 
 [Input1]
 Name='ds'
-Range=[0 20]
+Range=[0 200]
 NumMFs=3
 MF1='ZE':'trimf',[0 0 4]
 MF2='PM':'trimf',[4 10 16]
