@@ -1,6 +1,5 @@
-% DemoEKF.m - version 2018.1
-% MRTN4010 - S1.2018
-% Example using Extended Kalman Filter (EKF) for the localization problem, using LIDAR range observations.
+%Author: Kanadech Jirapongtanavech, Z5176970
+%Program: Solution for AAS, T1.2019, Project3.part1
 
 
 % Note#1:

@@ -1,3 +1,7 @@
+%Author: Kanadech Jirapongtanavech, Z5176970
+
+%Program: Solution for AAS, T1 2019, Project4.part A....
+
 close all; clear; clc;
 global N_G N_C P_m P_c locNumber
 N_G = 2000; %Number of generations

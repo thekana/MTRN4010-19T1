@@ -1,6 +1,5 @@
-% DemoEKF.m - version 2018.1
-% MRTN4010 - S1.2018
-% Example using Extended Kalman Filter (EKF) for the localization problem, using LIDAR range observations.
+%Author: Kanadech Jirapongtanavech, Z5176970
+%Program: Solution for AAS, T1.2019, Project3.part2
 
 
 % Note#1:
@@ -86,8 +85,10 @@ stdDevSpeed = 0.15 ;   % We simulate a lot of error!  (very difficult case).
 % may be the case, in cartain terrains in which platform's traction is not good.)
 
 % ... errors in the range measurements (25cm, standard dev.)
-sdev_rangeMeasurement = 0.25 ;      %<<< added this sDev arbitary value
-sdev_angleMeasurement = 0.03;       %<<< added this sDev arbitary value
+sdev_rangeMeasurement = 0.25 ;          % std. of noise in range measurements. 0.25m
+sdev_angleMeasurement = 0.03;            %<<< added this sDev arbitary value
+
+bias = 1*pi/180;        %bias of the sensor
 % .....................................................
 
 % some parameters, for the simulation context.
@@ -114,18 +115,17 @@ NavigationMap = CreateSomeMap(n_usedLanmarks) ;  %creates a artificial map!
 % In variables "Xe" and "P" :These are the EKF ESTIMATES (Expected value and covariance matrix)
 % Initial conditions of the estimates (identical to the real ones, as in
 % the lab)( I Assume we know the initial condition of the system)
-Xe = [ 0; 0;pi/2 ] ; 
-P = zeros(3,3) ;            % initial quality --> perfect (covariance =zero )
-P_u = diag([stdDevSpeed^2,stdDevGyro^2]);  %input of the model are still 2 platform's speed & Wz
-% Why perfect? (BECAUSE in this case we DO ASSUME we know perfectly the initial condition)
+Xe = [ 0; 0;pi/2;0 ] ;      % <<< change the state vector to 4x1
+P = zeros(4,4) ;            % initial quality --> perfect (covariance =zero )
+P(4,4) = (4*pi/180)^2;      % we know bias 
+P_u = diag([stdDevSpeed^2,stdDevGyro^2]);   %input of the model are still 2 platform's speed & Wz
 
-% These are the "opn-loop" dead reckoning ESTIMATES
-Xdr = [ 0; 0;pi/2 ] ;
+Xdr = [ 0; 0;pi/2;0 ] ;
 
 % Some buffers to store the intermediate values during the experiment (so we can plot them, later)
 Xreal_History= zeros(3,Li) ;
-Xe_History= zeros(3,Li) ;
-XeDR_History= zeros(3,Li) ;
+Xe_History= zeros(4,Li) ;
+XeDR_History= zeros(4,Li) ;
 
 % .....................................................
 % I assume that every time we apply the process model to predict the evolution of the system for a 
@@ -135,14 +135,14 @@ XeDR_History= zeros(3,Li) ;
 % Although you can use this proposed Q, it can be improved. Read
 % "MTRN4010_L06_Noise_in_the_inputs_of_ProcessModel.pdf" in order to implement a good refinement. 
 
-Q1 = diag( [ (0.01)^2 ,(0.01)^2 , (1*pi/180)^2]) ;
+Q1 = diag( [ (0.01)^2 ,(0.01)^2 , (1*pi/180)^2,0]) ; %<<< assume bias constant Q1(4,4) = 0
 % Q matrix. Represent the covariance of the uncertainty about the process model.
 % .....................................................
 
 
 time=0 ;
 % initialize the simulator of process (the "real system").
-InitSimulation(stdDevSpeed,stdDevGyro,sdev_rangeMeasurement,DtObservations,sdev_angleMeasurement);
+InitSimulation(stdDevSpeed,stdDevGyro,sdev_rangeMeasurement,DtObservations,sdev_angleMeasurement,bias);
 % (BTW: this is just a simulation to replace the real system, because we,
 % for the moment, do not have the real system. )
 
@@ -175,13 +175,15 @@ for i=1:Li,     % loop
     % Estimate new covariance, associated to the state after prediction
     % First , I evaluate the Jacobian matrix of the process model (see lecture notes), at X=X(k|k).
     % You should write the analytical expression on paper to understand the following line.
-     %<<<modified this ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    J = [ [1,0,-Dt*Noisy_speed*sin(Xe(3))]  ; [0,1,Dt*Noisy_speed*cos(Xe(3))];[ 0,0,1]];
-    J_u = [Dt*cos(Xe(3)),0;Dt*sin(Xe(3)),0;0,Dt];
+    
+    %<<<modified this ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    J = [ [1,0,-Dt*Noisy_speed*sin(Xe(3)),0]  ; [0,1,Dt*Noisy_speed*cos(Xe(3)),0];[ 0,0,1,-Dt]; [0,0,0,1]]; %4x4
+    J_u = [Dt*cos(Xe(3)),0;Dt*sin(Xe(3)),0;0,Dt;0,0]; %4x2
     Q = J_u*P_u*J_u'+Q1;
     % then I calculate the new coveraince, after the prediction P(K+1|K) = J*P(K|K)*J'+Q ;
-    P = J*P*J'+Q ; %TODO
-    % ATTENTION: we need, in our case, to propose a consistent Q matrix (this is part of your assignment!)
+    P = J*P*J'+Q ; 
+    %<<<modified this ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    
         
     % And, here, we calculate the predicted expected value. 
     Xe    = RunProcessModel(Xe,Noisy_speed,Noisy_GyroZ,Dt) ;
@@ -199,6 +201,7 @@ for i=1:Li,     % loop
     
 
     % .. Get range measuremens, if those are available.
+    %<<< modified the function to give measured angles bearing
     [nDetectedLandmarks,MeasuredRanges,MeasuredAngles,IDs]=GetObservationMeasurements();
     
     % if measurements are avaiable ==> we perform the related updates.
@@ -225,11 +228,12 @@ for i=1:Li,     % loop
     
         
             % here is it. "H". I reuse some previous calculations.
-            H = [  -eDX/eDD , -eDY/eDD , 0;
-                eDY/eDD^2, -eDX/eDD^2, -1] ;   % Jacobian of h(X); size 1x3
+            H = [  -eDX/eDD , -eDY/eDD , 0,0;
+                eDY/eDD^2, -eDX/eDD^2, -1,0] ;   % Jacobian of h(X); size 2x3
         
             % the expected distances to this landmark ( "h(Xe)" )
-            ExpectedRange = eDD ;   % just a coincidence: we already calculated them for the Jacobian, so I reuse it. 
+            ExpectedRange = eDD ;
+            % <<< calculate expected angle
             ExpectedAngle = atan2(eDY,eDX) - Xe(3) + pi/2;
         
             % Evaluate residual (innovation)  "Y-h(Xe)" 
@@ -239,6 +243,7 @@ for i=1:Li,     % loop
                    
 
             % ------ covariance of the noise/uncetainty in the measurements
+            % <<< modified this
             R = diag([sdev_rangeMeasurement*sdev_rangeMeasurement*4 sdev_angleMeasurement*sdev_angleMeasurement*4]);
             % I multiply by 4 because I want to be conservative and assume
             % twice the standard deviation that I believe does happen.
@@ -246,7 +251,7 @@ for i=1:Li,     % loop
             % Some intermediate steps for the EKF (as presented in the lecture notes)
             S = R + H*P*H' ;
             iS=inv(S);                 % iS = inv(S) ;   % in this case S is 1x1 so inv(S) is just 1/S
-            K = P*H'*iS ;           % Kalman gain
+            K = P*H'*iS;           % Kalman gain
             % ----- finally, we do it...We obtain  X(k+1|k+1) and P(k+1|k+1)
             
             Xe = Xe+K*z ;       % update the  expected value
@@ -286,9 +291,13 @@ return ;
 % --- THIS IS THE PROCESS MODEL of MY SYSTEM. (it is a Kinemetic model)
     
 function Xnext=RunProcessModel(X,speed,GyroZ,dt) 
+    %<<<modified the process model and remove bias every iteration
+    Xnext = X + dt*[ speed*cos(X(3)) ;  speed*sin(X(3)) ; GyroZ-X(4);0]; %+ noise;
+return ;
+function Xnext=RunProcessModelReal(X,speed,GyroZ,dt) 
+    %<<<modified the process model and remove bias every iteration
     Xnext = X + dt*[ speed*cos(X(3)) ;  speed*sin(X(3)) ; GyroZ]; %+ noise;
 return ;
-
 
 % =========================================================================
 % ========== Simulation functions - (used for simulation of "real" platform and
@@ -317,7 +326,8 @@ return ;
 % in real cases, they do happen, we do not propose them.
 function [speed,GyroZ] = SimuControl(X,t)
     speed = 2 ;                                         % cruise speed, 2m/s  ( v ~ 7km/h)
-    GyroZ = 3*pi/180 + sin(0.1*2*pi*t/50)*.02; %+ 1*pi/180;         % some crazy driver moving the steering wheel...
+    %<<also added bias to gyro
+    GyroZ = 3*pi/180 + sin(0.1*2*pi*t/50)*.02; % some crazy driver moving the steering wheel...
 return ;
 
 
@@ -337,12 +347,11 @@ return ;
 
 
 
-function InitSimulation(stdDevSpeed,stdDevGyro,sdev_rangeMeasurement,DtObservations,sdev_angleMeasurement)
+function InitSimulation(stdDevSpeed,stdDevGyro,sdev_rangeMeasurement,DtObservations,sdev_angleMeasurement,bias)
     global ContextSimulation;
     ContextSimulation.Xreal = [ 0; 0;pi/2] ;     % [x;y;phi]
     ContextSimulation.stdDevSpeed = stdDevSpeed;
     ContextSimulation.stdDevGyro = stdDevGyro;
-    %ContextSimulation.Xreal = [0;0;pi/2;0;0];
     ContextSimulation.speed=0;
     ContextSimulation.GyroZ=0;
     ContextSimulation.sdev_rangeMeasurement=sdev_rangeMeasurement;
@@ -360,7 +369,7 @@ function [Noisy_speed,Noisy_GyroZ]=GetProcessModelInputs()
     % noise to the perfect measurements (the ones I get from the simulated "real" platform.
     global ContextSimulation;
     Noisy_speed =ContextSimulation.speed+ContextSimulation.stdDevSpeed*randn(1) ;
-    Noisy_GyroZ =ContextSimulation.GyroZ+ContextSimulation.stdDevGyro*randn(1);
+    Noisy_GyroZ =ContextSimulation.GyroZ+ContextSimulation.stdDevGyro*randn(1)+1*pi/180;
 return;
 
 
@@ -377,7 +386,7 @@ function  SimuPlatform(time,Dt)
     [ContextSimulation.speed,ContextSimulation.GyroZ] = SimuControl(ContextSimulation.Xreal,time) ;      % read kinematic model inputs, ideal ones
     % .........................................
     % simulate one step of the "real system":  Xreal(time)
-    ContextSimulation.Xreal = RunProcessModel(ContextSimulation.Xreal,ContextSimulation.speed,ContextSimulation.GyroZ,Dt) ;
+    ContextSimulation.Xreal = RunProcessModelReal(ContextSimulation.Xreal,ContextSimulation.speed,ContextSimulation.GyroZ,Dt) ;
     ContextSimulation.CurrSimulatedTime = ContextSimulation.CurrSimulatedTime+Dt;
 return;
 
@@ -483,6 +492,11 @@ subplot(311) ; plot(Xreal_History(1,:)-Xe(1,:)) ;ylabel('x-xe (m)') ;
 title('Performance Dead Reckoning (usually, not good)') ;
 subplot(312) ; plot(Xreal_History(2,:)-Xe(2,:)) ;ylabel('y-ye (m)') ;
 subplot(313) ; plot(180/pi*(Xreal_History(3,:)-Xe(3,:))) ;ylabel('heading error (deg)') ;
+
+figure(5); clf;
+plot(Xe_History(4,:).*180/pi);
+hold on;
+plot(linspace(0,5000),ones(length(linspace(0,5000)))*1);    %plot line here
 Xe=[];
 
 return ;

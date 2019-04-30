@@ -1,3 +1,7 @@
+%Author: Kanadech Jirapongtanavech, Z5176970
+
+%Program: Solution for AAS, T1 2019, Project4.part C....
+
 function []=Project04_C()
 % sim car in random movement
 

@@ -1,6 +1,6 @@
 %Author: Kanadech Jirapongtanavech, Z5176970
 
-%Program: Solution for AAS, S1.2018, Project3.part 5....
+%Program: Solution for AAS, T1.2019, Project3.part 5....
 
 clc(); close all;
 %% Create a global variable struct to be used in multiple functions

@@ -1,3 +1,7 @@
+%Author: Kanadech Jirapongtanavech, Z5176970
+%Program: Solution for AAS, T1.2019, Project2.partA and B
+
+
 load('DataForProject02/IMU_dataC.mat');
 load('DataForProject02/Speed_dataC.mat');
 load('DataForProject02/Laser__2C.mat');
