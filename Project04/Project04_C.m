@@ -76,7 +76,7 @@ for g=1:PSO.G
     fprintf('Generation %d Gbest %5.3f gbest %5.3f\n',g,PSO.Gbest.',PSO.gbest);% currently best results
     % PSO Update
     toc
-    w=PSO.w2+(1-g/PSO.G)*PSO.dw;% decreasing inertia weight
+    w=PSO.w2+(1-g/PSO.G)*PSO.dw;% decreasing inertia weight (w_initial-w_final) = PSO.dw
     PSO.V=w*rand(PSO.D,PSO.N).*PSO.V+...
     PSO.cp*rand(PSO.D,PSO.N).*(PSO.Pbest-PSO.X)+...
     PSO.cg*rand(PSO.D,PSO.N).*(repmat(PSO.Gbest,[1,PSO.N])-PSO.X);

@@ -111,11 +111,11 @@ for i = 2:length(time)-1
         current_scan = current_scan + 1;
     end
     
-    J = [ [1,0,-dt*Xe(5)*sin(Xe(3)),0,dt*cos(Xe(3))] ; [0,1,dt*Xe(5)*cos(Xe(3)),0,dt*sin(Xe(3))];[ 0,0,1,-dt,0];[0,0,0,1,0];[0,0,0,0,1]]; %5x5 jacobian
+    J = [ [1,0,-dt*Xe(5)*sin(Xe(3)),0,dt*cos(Xe(3))] ; [0,1,dt*Xe(5)*cos(Xe(3)),0,dt*sin(Xe(3))];[ 0,0,1,-dt,0];[0,0,0,1,0];[0,0,0,0,1]]; %5x5 jacobian of the process model
     Ju = [0;0;dt;0;0]; %5x1 linear transformation of the input which is now only gyro
-    Q = Ju*Pu*Ju'+Q1;
-    P = J*P*J'+Q ;
-    Xe = processModel(imuGyro,dt,Xe);
+    Q = Ju*Pu*Ju'+Q1;   % covariance of the process noise
+    P = J*P*J'+Q ;      %prediction step
+    Xe = processModel(imuGyro,dt,Xe); %prediction step
     
     if(detectedOOIs >0)
         %EKF parts
@@ -137,12 +137,12 @@ for i = 2:length(time)-1
             MeasuredRange = eMD;
             MeasuredAngle = atan2(eMY,eMX); 
             z = [MeasuredRange-ExpectedRange;
-                wrapToPi(MeasuredAngle-ExpectedAngle)];
-            R = diag([stdRangeMeasure^2*4 stdBearingMeasure^2*4]);
+                wrapToPi(MeasuredAngle-ExpectedAngle)];     % discrepancy (innovation)
+            R = diag([stdRangeMeasure^2*4 stdBearingMeasure^2*4]);      %covariance of measurement noise
             %%EKFSteps
-            S = R + H*P*H';
+            S = R + H*P*H';     %estimate of covariance of z(k+1)
             iS=inv(S);
-            K = P*H'*iS;
+            K = P*H'*iS;        %kalman gain
             Xe = Xe+K*z;
             P = P-K*H*P;
 
@@ -154,7 +154,7 @@ for i = 2:length(time)-1
     set(myHandle.handle3,'string',s);
     set(myHandle.handle6,'xdata',Xdrhistory(1,1:i),'ydata',Xdrhistory(2,1:i),'LineStyle','none','marker','.');
     plotRobot(Xe(1),Xe(2),Xe(3));
-    pause(0.00001) ;                   % 10hz refresh rate
+    pause(0.01) ;                   % 10hz refresh rate
 end
     figure()
     plot(time(1:length(time)-1),Xehistory(4,1:length(time)-1));
