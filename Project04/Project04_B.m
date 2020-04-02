@@ -42,9 +42,8 @@ virtualVel = calculateDistance(virtual,target)/time.T;
 
 %%
 for t=0:time.dt:time.T
-    vel = evalfis(calculateDistance(car,virtual),fis_vel);
-    omega = evalfis(calculateAngle(car,virtual),fis_ang);
-    
+    vel = evalfis(fis_vel,calculateDistance(car,virtual));
+    omega = evalfis(fis_ang,calculateAngle(car,virtual));
     [virtual] = CarNow(virtual,time,virtualVel,0);
     [virtual] = CarShow(virtual,t);
     
